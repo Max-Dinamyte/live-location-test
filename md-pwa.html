@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<meta name="theme-color" content="#0e0d0b"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Max Dinamyte"/>
+<title>Max Dinamyte Travel Maps</title>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="apple-touch-icon" href="/icons/icon-192.png"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant:wght@300;400;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --gold:#b8975a;--gold-lt:#d4b47a;--gold-dk:#8a6e3c;
+  --ivory:#f2ece0;--ink:#0e0d0b;--smoke:#2e2b25;--charcoal:#1c1a16;
+  --border:rgba(184,151,90,0.22);
+  --font-serif:'Cormorant',Georgia,serif;--font-sans:'Jost',system-ui,sans-serif;
+  --restaurant:#e05a2b;--bar:#6a3fd4;--site:#1a8c5e;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;-webkit-tap-highlight-color:transparent;}
+body{font-family:var(--font-sans);background:var(--ink);color:var(--ivory);display:flex;flex-direction:column;}
+
+/* ── AUTH SCREEN ── */
+.auth-screen{
+  position:fixed;inset:0;z-index:2000;
+  background:var(--ink);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:2rem;
+}
+.auth-screen.hidden{display:none;}
+.auth-logo{font-family:var(--font-serif);font-size:2rem;font-weight:600;letter-spacing:.15em;margin-bottom:.4rem;}
+.auth-logo span{color:var(--gold);}
+.auth-tagline{font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(242,236,224,.35);margin-bottom:3rem;}
+.auth-card{width:100%;max-width:360px;background:var(--smoke);border:1px solid var(--border);padding:2rem;}
+.auth-card h2{font-family:var(--font-serif);font-weight:300;font-size:1.4rem;margin-bottom:1.5rem;text-align:center;}
+.auth-input{
+  width:100%;background:var(--charcoal);border:1px solid var(--border);
+  color:var(--ivory);font-family:var(--font-sans);font-size:1rem;
+  padding:.85rem 1rem;margin-bottom:1rem;outline:none;
+}
+.auth-input::placeholder{color:rgba(242,236,224,.3);}
+.auth-input:focus{border-color:var(--gold);}
+.auth-btn{
+  width:100%;padding:.95rem;background:var(--gold);color:var(--ink);
+  font-family:var(--font-sans);font-size:.7rem;font-weight:600;
+  letter-spacing:.14em;text-transform:uppercase;border:none;cursor:pointer;
+  margin-bottom:.75rem;transition:background .2s;
+}
+.auth-btn:hover{background:var(--gold-lt);}
+.auth-btn.secondary{background:transparent;border:1px solid var(--border);color:var(--ivory);}
+.auth-btn.secondary:hover{border-color:var(--gold);color:var(--gold);}
+.auth-divider{text-align:center;font-size:.65rem;color:rgba(242,236,224,.3);letter-spacing:.1em;margin:.5rem 0;}
+.auth-switch{text-align:center;font-size:.72rem;color:rgba(242,236,224,.4);margin-top:1rem;}
+.auth-switch a{color:var(--gold);text-decoration:none;cursor:pointer;}
+.auth-error{font-size:.7rem;color:#e05a2b;margin-bottom:.75rem;text-align:center;min-height:1rem;}
+
+/* ── TOP BAR ── */
+.topbar{
+  background:var(--ink);border-bottom:1px solid var(--border);
+  padding:.7rem 1rem;display:flex;align-items:center;
+  justify-content:space-between;flex-shrink:0;z-index:1000;
+}
+.topbar-logo{font-family:var(--font-serif);font-size:1.1rem;font-weight:600;letter-spacing:.12em;color:var(--ivory);}
+.topbar-logo span{color:var(--gold);}
+.topbar-right{display:flex;align-items:center;gap:.75rem;}
+.user-btn{
+  background:none;border:1px solid var(--border);color:rgba(242,236,224,.5);
+  font-family:var(--font-sans);font-size:.58rem;letter-spacing:.12em;
+  text-transform:uppercase;padding:.4rem .75rem;cursor:pointer;
+  transition:border-color .2s,color .2s;
+}
+.user-btn:hover{border-color:var(--gold);color:var(--gold);}
+
+/* ── TABS ── */
+.tab-bar{
+  background:var(--charcoal);border-bottom:1px solid var(--border);
+  display:flex;flex-shrink:0;overflow-x:auto;scrollbar-width:none;
+}
+.tab-bar::-webkit-scrollbar{display:none;}
+.tab-btn{
+  flex:0 0 auto;padding:.65rem 1.1rem;font-family:var(--font-sans);
+  font-size:.58rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;
+  color:rgba(242,236,224,.35);background:none;border:none;
+  border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;
+  transition:color .2s,border-color .2s;
+}
+.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
+.tab-btn:hover:not(.active){color:rgba(242,236,224,.6);}
+
+/* ── MAIN LAYOUT ── */
+.app-body{flex:1;display:flex;overflow:hidden;position:relative;}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:300px;flex-shrink:0;background:var(--charcoal);
+  border-right:1px solid var(--border);display:flex;flex-direction:column;
+  overflow:hidden;transition:left .3s ease;
+}
+.sidebar-header{padding:.75rem 1rem;border-bottom:1px solid var(--border);flex-shrink:0;}
+.filter-row{display:flex;gap:.35rem;flex-wrap:wrap;}
+.filter-btn{
+  background:none;border:1px solid var(--border);color:rgba(242,236,224,.4);
+  font-family:var(--font-sans);font-size:.55rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:.3rem .6rem;cursor:pointer;transition:.2s;
+}
+.filter-btn.active,.filter-btn:hover{border-color:var(--gold);color:var(--gold);}
+.places-list{flex:1;overflow-y:auto;padding:.5rem 0;}
+.places-list::-webkit-scrollbar{width:4px;}
+.places-list::-webkit-scrollbar-thumb{background:var(--gold-dk);border-radius:2px;}
+.place-item{
+  padding:.75rem 1rem;border-bottom:1px solid rgba(184,151,90,.08);
+  cursor:pointer;transition:background .15s;display:flex;align-items:flex-start;gap:.6rem;
+}
+.place-item:hover{background:rgba(184,151,90,.06);}
+.place-item.locked{opacity:.45;cursor:default;}
+.place-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+.place-dot.restaurant{background:var(--restaurant);}
+.place-dot.bar{background:var(--bar);}
+.place-dot.site{background:var(--site);}
+.place-name{font-size:.78rem;font-weight:500;color:var(--ivory);line-height:1.3;}
+.place-lock{font-size:.65rem;color:rgba(242,236,224,.3);margin-top:.2rem;}
+
+/* ── MAP ── */
+.map-wrap{flex:1;position:relative;}
+#map{width:100%;height:100%;}
+
+/* ── MAP CONTROLS ── */
+.locate-btn{
+  position:absolute;bottom:6rem;right:1rem;z-index:500;
+  width:48px;height:48px;border-radius:50%;background:var(--gold);
+  border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 20px rgba(0,0,0,.5);transition:.2s;
+}
+.locate-btn:hover{background:var(--gold-lt);}
+.locate-btn.active{background:var(--gold-lt);}
+.locate-btn svg{width:22px;height:22px;fill:var(--ink);}
+.pulse-ring{position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--gold-lt);display:none;}
+.locate-btn.active .pulse-ring{display:block;animation:pulse 1.8s ease-out infinite;}
+@keyframes pulse{0%{transform:scale(.9);opacity:.8;}100%{transform:scale(1.6);opacity:0;}}
+
+/* ── PLACE POPUP ── */
+.place-popup{
+  position:absolute;bottom:0;left:0;right:0;z-index:600;
+  background:var(--smoke);border-top:1px solid var(--border);
+  padding:1.25rem;transform:translateY(100%);transition:transform .3s ease;
+  max-height:50vh;overflow-y:auto;
+}
+.place-popup.open{transform:translateY(0);}
+.popup-close{position:absolute;top:.75rem;right:.75rem;background:none;border:none;color:rgba(242,236,224,.4);font-size:1.1rem;cursor:pointer;}
+.popup-type{font-size:.58rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:.4rem;}
+.popup-name{font-family:var(--font-serif);font-size:1.3rem;font-weight:300;margin-bottom:.75rem;}
+.popup-desc{font-size:.78rem;line-height:1.75;color:rgba(242,236,224,.65);}
+.popup-directions{
+  display:inline-block;margin-top:1rem;padding:.6rem 1.1rem;
+  background:none;border:1px solid var(--gold);color:var(--gold);
+  font-family:var(--font-sans);font-size:.62rem;font-weight:500;
+  letter-spacing:.12em;text-transform:uppercase;cursor:pointer;text-decoration:none;
+  transition:.2s;
+}
+.popup-directions:hover{background:var(--gold);color:var(--ink);}
+
+/* ── SHOP SCREEN ── */
+.shop-screen{
+  position:fixed;inset:0;z-index:1500;background:var(--ink);
+  display:none;flex-direction:column;overflow-y:auto;
+}
+.shop-screen.open{display:flex;}
+.shop-header{
+  padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+  position:sticky;top:0;background:var(--ink);z-index:10;
+}
+.shop-header h2{font-family:var(--font-serif);font-weight:300;font-size:1.4rem;}
+.shop-close{background:none;border:none;color:rgba(242,236,224,.4);font-size:1.5rem;cursor:pointer;}
+.shop-grid{padding:1.25rem;display:flex;flex-direction:column;gap:1rem;}
+.map-card{
+  background:var(--smoke);border:1px solid var(--border);
+  padding:1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;
+}
+.map-card-info{}
+.map-card-flag{font-size:.7rem;letter-spacing:.1em;color:rgba(242,236,224,.4);margin-bottom:.3rem;}
+.map-card-name{font-family:var(--font-serif);font-size:1.1rem;font-weight:300;margin-bottom:.4rem;}
+.map-card-meta{font-size:.65rem;color:rgba(242,236,224,.4);line-height:1.6;}
+.map-card-right{flex-shrink:0;text-align:right;}
+.map-card-price{font-family:var(--font-serif);font-size:1.3rem;color:var(--gold);margin-bottom:.5rem;}
+.buy-btn{
+  background:var(--gold);color:var(--ink);border:none;
+  font-family:var(--font-sans);font-size:.62rem;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;padding:.65rem 1.1rem;
+  cursor:pointer;transition:background .2s;white-space:nowrap;
+}
+.buy-btn:hover{background:var(--gold-lt);}
+.buy-btn.owned{background:var(--smoke);border:1px solid var(--border);color:rgba(242,236,224,.5);cursor:default;}
+.buy-btn.owned:hover{background:var(--smoke);}
+.expires-note{font-size:.6rem;color:rgba(242,236,224,.35);margin-top:.3rem;}
+
+/* ── SIDEBAR TOGGLE (mobile) ── */
+.sidebar-toggle{
+  display:none;position:absolute;top:0;bottom:0;left:0;z-index:400;
+  width:28px;background:var(--smoke);border-right:1px solid var(--border);
+  color:var(--gold);font-family:var(--font-sans);font-size:.52rem;
+  letter-spacing:.18em;text-transform:uppercase;cursor:pointer;
+  writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);
+  align-items:center;justify-content:center;border:none;
+}
+
+/* ── LEGEND ── */
+.map-legend{
+  position:absolute;top:1rem;right:1rem;z-index:400;
+  background:rgba(14,13,11,.88);border:1px solid var(--border);
+  padding:.6rem .85rem;backdrop-filter:blur(8px);
+}
+.legend-item{display:flex;align-items:center;gap:.5rem;font-size:.62rem;
+  color:rgba(242,236,224,.5);margin-bottom:.3rem;}
+.legend-item:last-child{margin-bottom:0;}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+/* ── UNLOCK BANNER ── */
+.unlock-banner{
+  position:absolute;bottom:1rem;left:50%;transform:translateX(-50%);
+  z-index:500;background:rgba(14,13,11,.9);border:1px solid var(--border);
+  padding:.7rem 1.25rem;display:flex;align-items:center;gap:1rem;
+  backdrop-filter:blur(8px);white-space:nowrap;
+}
+.unlock-banner span{font-size:.68rem;color:rgba(242,236,224,.6);}
+.unlock-banner button{
+  background:var(--gold);color:var(--ink);border:none;
+  font-family:var(--font-sans);font-size:.6rem;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;padding:.5rem .9rem;cursor:pointer;
+}
+
+/* ── MOBILE ── */
+@media(max-width:768px){
+  .sidebar{position:absolute;left:-300px;top:0;bottom:0;z-index:300;}
+  .sidebar.open{left:28px;}
+  .sidebar-toggle{display:flex;}
+  #map{left:28px;right:0;position:absolute;top:0;bottom:0;}
+  .map-wrap{position:relative;}
+  .locate-btn{bottom:8rem;right:1rem;}
+  .map-legend{top:.75rem;right:.75rem;}
+}
+
+/* ── LEAFLET OVERRIDES ── */
+.leaflet-control-zoom{border:1px solid var(--border)!important;}
+.leaflet-control-zoom a{background:var(--smoke)!important;color:var(--ivory)!important;border-bottom:1px solid var(--border)!important;}
+.leaflet-control-zoom a:hover{background:var(--charcoal)!important;}
+.leaflet-control-attribution{background:rgba(14,13,11,.7)!important;color:rgba(242,236,224,.3)!important;font-size:.58rem!important;}
+.leaflet-control-attribution a{color:rgba(242,236,224,.5)!important;}
+.live-dot{width:16px;height:16px;border-radius:50%;background:var(--gold);border:3px solid var(--ivory);box-shadow:0 0 0 4px rgba(184,151,90,.3),0 2px 8px rgba(0,0,0,.5);}
+</style>
+</head>
+<body>
+
+<!-- ── AUTH SCREEN ── -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-logo">Max <span>Dinamyte</span></div>
+  <div class="auth-tagline">Independent Travel Maps</div>
+  <div class="auth-card">
+    <h2 id="authTitle">Sign In</h2>
+    <div class="auth-error" id="authError"></div>
+    <input class="auth-input" type="email" id="authEmail" placeholder="Email address" autocomplete="email"/>
+    <input class="auth-input" type="password" id="authPassword" placeholder="Password" autocomplete="current-password"/>
+    <button class="auth-btn" id="authSubmitBtn" onclick="submitAuth()">Sign In</button>
+    <div class="auth-divider">or</div>
+    <button class="auth-btn secondary" onclick="signInGoogle()">Continue with Google</button>
+    <div class="auth-switch" id="authSwitch">
+      No account? <a onclick="toggleAuthMode()">Create one</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div id="mainApp" style="display:none;flex-direction:column;height:100%;">
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="topbar-logo">Max <span>Dinamyte</span></div>
+    <div class="topbar-right">
+      <button class="user-btn" onclick="openShop()">🗺 My Maps</button>
+      <button class="user-btn" onclick="signOut()">Sign Out</button>
+    </div>
+  </div>
+
+  <!-- Map tabs -->
+  <div class="tab-bar" id="tabBar"></div>
+
+  <!-- Body -->
+  <div class="app-body">
+
+    <!-- Sidebar -->
+    <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">☰ Places</button>
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="filter-row" id="filterRow">
+          <button class="filter-btn active f-all" onclick="setFilter('all',this)">All</button>
+          <button class="filter-btn" onclick="setFilter('restaurant',this)">Restaurants</button>
+          <button class="filter-btn" onclick="setFilter('bar',this)">Bars</button>
+          <button class="filter-btn" onclick="setFilter('site',this)">Sites</button>
+        </div>
+      </div>
+      <div class="places-list" id="placesList"></div>
+      <button id="sidebarUnlockBtn" onclick="openShop()" style="display:none;width:100%;background:var(--gold);color:var(--ink);font-family:var(--font-sans);font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:1rem;border:none;cursor:pointer;flex-shrink:0;">🔓 Unlock Full Map — $2.99</button>
+    </div>
+
+    <!-- Map -->
+    <div class="map-wrap">
+      <div id="map"></div>
+
+      <div class="map-legend" id="mapLegend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--restaurant)"></div>Restaurant</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--bar)"></div>Bar</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--site)"></div>Site</div>
+      </div>
+
+      <button class="locate-btn" id="locateBtn" onclick="toggleLocation()" aria-label="My location">
+        <div class="pulse-ring"></div>
+        <svg viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
+      </button>
+
+      <div class="unlock-banner" id="unlockBanner" style="display:none;">
+        <span id="unlockText">Showing free preview</span>
+        <button onclick="openShop()">Unlock Full Map — $2.99</button>
+      </div>
+    </div>
+
+    <!-- Place popup -->
+    <div class="place-popup" id="placePopup">
+      <button class="popup-close" onclick="closePopup()">✕</button>
+      <div class="popup-type" id="popupType"></div>
+      <div class="popup-name" id="popupName"></div>
+      <div class="popup-desc" id="popupDesc"></div>
+      <a class="popup-directions" id="popupDirections" target="_blank">Open in Google Maps →</a>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── SHOP SCREEN ── -->
+<div class="shop-screen" id="shopScreen">
+  <div class="shop-header">
+    <h2>Available Maps</h2>
+    <button class="shop-close" onclick="closeShop()">✕</button>
+  </div>
+  <div class="shop-grid" id="shopGrid"></div>
+</div>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<script>
+// ── FIREBASE INIT ────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyBetQsXKk7RJtHDHPOpLgunAAXovema3A8",
+  authDomain: "max-dinamyte-travel.firebaseapp.com",
+  projectId: "max-dinamyte-travel",
+  storageBucket: "max-dinamyte-travel.firebasestorage.app",
+  messagingSenderId: "966323686121",
+  appId: "1:966323686121:web:1540d493c808c802803e78",
+  measurementId: "G-KB8EF7ZZQJ"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// ── MAP DATA ─────────────────────────────────────────────────────────────────
+var MAPS = {
+  buenosaires: {
+    title:'Buenos Aires, Argentina', center:[-34.65,-57.9], zoom:9, total:64,
+    stripeUrl:'https://buy.stripe.com/7sY9ATbBMchtfvK9dtenS0b',
+    places:[
+      {name:'Los Platitos',type:'restaurant',lat:-34.542796,lng:-58.436452,free:false,desc:'Famous restaurant for steaks and grilled hunks of cheese called provoleta. It\'s huge, seats about 500, and you can watch them grilling everything over charcoal at the bar.'},
+      {name:'La Mezzetta',type:'restaurant',lat:-34.578157,lng:-58.460821,free:false,desc:'Go here for the cheese and onion fugazetta pizza. It\'s historic, and is one of the best pizzerias in Buenos Aires.'},
+      {name:'Salvaje Bakery',type:'restaurant',lat:-34.580753,lng:-58.441994,free:false,desc:'Breakfast pastries. This bakery is known for its medialunas, which are a sweet croissant. It is small, so you might have to wait.'},
+      {name:'Heladería Pistacchio',type:'restaurant',lat:-34.582314,lng:-58.447371,free:false,desc:'One of the most popular ice cream shops in the city. If they\'re serving pistachio, it\'s worth a try, but, honestly, it\'s all pretty delicious.'},
+      {name:'El Santa Evita',type:'restaurant',lat:-34.593151,lng:-58.4245,free:false,desc:'This is a restaurant dedicated to Evita. It\'s Argentine comfort food with a side of political arguing. They\'ve also been known to do an aperitivo starting at 6pm.'},
+      {name:'Don Ignacio',type:'restaurant',lat:-34.610657,lng:-58.415063,free:false,desc:'Off the beaten track. This is a neighborhood dive known for milanesa. Cheap, Argentine comfort food.'},
+      {name:'Nuestra Parrilla',type:'restaurant',lat:-34.619069,lng:-58.372861,free:false,desc:'This is the place for a choripan, which is a chorizo sausage that has been butterflied and served in a bun. It\'s very traditional Porteno.'},
+      {name:'Patio de los lecheros',type:'restaurant',lat:-34.623482,lng:-58.454548,free:false,desc:'This is an open market filled with food trucks and other street food.'},
+      {name:'Don Carlos',type:'restaurant',lat:-34.636103,lng:-58.363669,free:false,desc:'Meat and pasta, but you don\'t get to choose. The owner decides what you\'re going to eat that night and his wife and granddaughter make it.'},
+      {name:'Feria de Mataderos',type:'restaurant',lat:-34.66271,lng:-58.500256,free:false,desc:'Sunday outdoor market that is usually filled with locals. Empanadas, torta frita (fried dough), tamales, locro (hominy stew), and humitas (steamed creamed corn).'},
+      {name:'Don Julio Parrilla',type:'restaurant',lat:-34.586316,lng:-58.424269,free:true,desc:'If this is NOT the best steakhouse in the world, it\'s in the conversation. Make sure to get reservations, because getting in otherwise is almost impossible.'},
+      {name:'Cabaña Las Lilas',type:'restaurant',lat:-34.604009,lng:-58.366736,free:false,desc:'A parrilla that has it\'s own cattle ranch. The meat is good, as is the atmosphere.'},
+      {name:'La Cabrera',type:'restaurant',lat:-34.589385,lng:-58.432785,free:false,desc:'Considered by locals to be one of the best parrillas in the city, and locals know their meat.'},
+      {name:'Pizzería Güerrin',type:'restaurant',lat:-34.604121,lng:-58.385982,free:false,desc:'Argentine pizza is different from other pizza. It\'s hard to describe, but it is delicious. This is one of the most renowned pizzerias in Buenos Aires. They are also known for fantastic empanadas.'},
+      {name:'Ña Serapia',type:'restaurant',lat:-34.582851,lng:-58.407708,free:false,desc:'Typical bodegón with particularly flaky empanadas. Try the ‘La Porteña’ with raisins and olives, and the ‘Salteña’ style empanada.'},
+      {name:'Parrilla El Pobre Luis',type:'restaurant',lat:-34.555342,lng:-58.452246,free:false,desc:'A parrilla run by a Uruguayan family. It\'s frequented by locals. You have to try the mollejas (sweetbread), pamplonas, liver and kidney a la tela.'},
+      {name:'El Cuartito',type:'restaurant',lat:-34.597843,lng:-58.3855,free:false,desc:'Founded in 1934, this is one of the oldest pizzerias in Buenos Aires. It has been declared an Argentine heritage site. Also try the empanadas.'},
+      {name:'Los Galgos',type:'restaurant',lat:-34.603012,lng:-58.392309,free:false,desc:'One of the cafe notables (historic cafes) that actually serves good coffee. Go for breakfast, and get the cortado and ham and cheese tostado.'},
+      {name:'Bar Plaza Dorrego',type:'restaurant',lat:-34.620571,lng:-58.371309,free:false,desc:'A coffee bar in the San Telmo Market. And while you can find it many places around the city now, they are know for the "submarino." It\'s a hot mug of milk in which you melt an entire chocolate bar.'},
+      {name:'Las Violetas',type:'restaurant',lat:-34.611148,lng:-58.420788,free:false,desc:'A traditional cafe well know for it\'s high tea.'},
+      {name:'Mercado San Telmo',type:'restaurant',lat:-34.6195,lng:-58.372821,free:false,desc:'This is the main indoor market in Buenos Aires. Food, antiques, crafts, coffee, etc. Go to Beba Cocina restaurant inside the market and get Palmeritas de Roquefort y Ananá (palmiers with Roquefort, pickled pineapple, and basil; it might be the best food you never knew existed).'},
+      {name:'Café de los Angelitos',type:'restaurant',lat:-34.609628,lng:-58.396133,free:false,desc:'One of the old traditional cafes in Buenos Aires. Beautiful tile work and stained glass. Try the torta de ricota.'},
+      {name:'Café Tortoni',type:'restaurant',lat:-34.608653,lng:-58.378212,free:true,desc:'The coffee mecca in Buenos Aires. It has been the center of intellectual Buenos Aires for nearly 200 years.'},
+      {name:'Nilson',type:'bar',lat:-34.619522,lng:-58.3724,free:false,desc:'This is one of the best wine bars in Buenos Aires. If you want a good bottle of Argentine wine, come here. You can get wine and wander around the market.'},
+      {name:'La Fuerza',type:'bar',lat:-34.585585,lng:-58.44494,free:false,desc:'A vermouth bar that makes its own red and white from local ingredients and serves it on tap. The drinks are good, and food, mostly snacks pairs nicely with the vermouth, or a cocktail.'},
+      {name:'Floreria Atlántico',type:'bar',lat:-34.591532,lng:-58.379713,free:false,desc:'This is an up-scale cocktail bar behind a florist shop. The housemade gin is made with yerba mate.'},
+      {name:'Doppelganger Bar',type:'bar',lat:-34.624436,lng:-58.372611,free:false,desc:'Retro bar with classic cocktails. It has the feel of an old social club.'},
+      {name:'Café San Bernardo',type:'bar',lat:-34.597867,lng:-58.441156,free:false,desc:'Neighborhood dive by day, bustling table tennis bar by night.'},
+      {name:'Sky Bar',type:'bar',lat:-34.597473,lng:-58.376804,free:false,desc:'One of the few rooftop bars with views. Buenos Aires is not stunning from the air, so, this is on the list, but not a must do.'},
+      {name:'Guebara Bar',type:'bar',lat:-34.620656,lng:-58.37232,free:false,desc:'Local dive bar. It\'s beer in pitchers, cheap drinks, no live music.'},
+      {name:'Sónoman',type:'bar',lat:-34.584558,lng:-58.436644,free:false,desc:'A local bar that is has its share of non-locals. It has good, cheap cocktails. Head to the garden in the back.'},
+      {name:'Palacio Barolo',type:'bar',lat:-34.609591,lng:-58.385843,free:true,desc:'This is an old building inspired by Dante\'s "Divine Comedy." There is a rooftop bar called Salon 1923, and if you can be there at sunset you get a great view of the sun setting behind the Congress building.'},
+      {name:'La Casa del Señor Duncan',type:'bar',lat:-34.611333,lng:-58.420084,free:false,desc:'A bar in an old mansion. You have to ring the bell to get in. Expect singing, dancing, piano playing, and everything in between.'},
+      {name:'Lo de Roberto',type:'bar',lat:-34.579253,lng:-58.541219,free:false,desc:'This is a tango bar that feels like stepping back in time. The owner is an old man who will occasionally get up and start singing.'},
+      {name:'Liverpool',type:'bar',lat:-34.584001,lng:-58.444068,free:false,desc:'This is a bar dedicated to British music. There are theme nights, including Oasis nights.'},
+      {name:'Ferona',type:'bar',lat:-34.587034,lng:-58.437628,free:false,desc:'This is a dimly lit social club. Ring the bell and they\'ll let you in. There is also a rooftop terrace that is nice. It can get busy late at night.'},
+      {name:'El Zanjon de Granados',type:'site',lat:-34.616722,lng:-58.371808,free:false,desc:'This is a series of tunnels under the city that many believe to be the original settlement of Buenos Aires. Make sure to book a tour before you go.'},
+      {name:'Casa Rosada',type:'site',lat:-34.608056,lng:-58.370278,free:true,desc:'The Presidential palace. You can do tours, this is where Madonna...er...Evita sang to the public (although that didn\'t happen).'},
+      {name:'Recoleta Cemetery',type:'site',lat:-34.587483,lng:-58.393441,free:true,desc:'Famous cemetery with ostentatious mausoleums. It is truly one of the most beautiful cemeteries in the world. Eva Peron is here in the Duarte crypt, and many other well known Argentines are also buried here.'},
+      {name:'Teatro Colón',type:'site',lat:-34.601041,lng:-58.383079,free:false,desc:'If you like opera or Belle Epoque architecture this is the place to go. An awe-inspiring building, for sure.'},
+      {name:'Plaza de Mayo',type:'site',lat:-34.608367,lng:-58.372283,free:false,desc:'This is the center of Buenos Aires. Come here to people watch and drink mate, but bring your own mate.'},
+      {name:'Argentine Polo Association',type:'site',lat:-34.570501,lng:-58.428047,free:false,desc:'Argentina is to polo what New York is to baseball and Manchester/Rio is to soccer (futbol). If you want a unique experience, seeing polo in Argentina is up there.'},
+      {name:'Obelisco',type:'site',lat:-34.603739,lng:-58.38157,free:false,desc:'221 foot obelisk built to commemorate the 400th Anniversary of Buenos Aires\' founding. It\'s a national historic monument.'},
+      {name:'Congreso de la Nación Argentina',type:'site',lat:-34.609821,lng:-58.392606,free:false,desc:'This is the Argentine legislative building. It is a stunning building, absolutely stunning. There are free guided tours at 12:30pm on Monday, Tuesday, Thursday, and Friday.'},
+      {name:'Avenida de Mayo',type:'site',lat:-34.609092,lng:-58.381134,free:false,desc:'The street connecting the Casa Rosada and the Parliament. This is the most important political street in Argentina.'},
+      {name:'Tigre',type:'site',lat:-34.425087,lng:-58.579658,free:false,desc:'This is a city about 30ks north of Buenos Aires. It is in the Parana Delta. It\'s quite scenic with lots to do. Check out the Puerto de Frutos, the Museo del Mate, take a boat ride around the delta, or check out the art museum, if nothing else, for the building.'},
+      {name:'Feria de San Telmo',type:'site',lat:-34.609146,lng:-58.371897,free:false,desc:'This is a street market that is well known for antiques. Only on Sundays.'},
+      {name:'Feria de Caminito',type:'site',lat:-34.63934,lng:-58.362684,free:false,desc:'The center of La Boca, the most bohemian part of the city. There is a "museum" here that has been around since 1959. It\'s a pedestrian zone that is also an art market.'},
+      {name:'Feria de libros Parque Rivadavia ( compra venta canje )',type:'site',lat:-34.618512,lng:-58.434869,free:false,desc:'A market for all sorts of published materials, books, magazines, newspapers, etc.'},
+      {name:'El Ateneo Grand Splendid',type:'site',lat:-34.595983,lng:-58.394228,free:false,desc:'This is the most beautiful book store in the world according to National Geographic, and the second most beautiful according to the Guardian. It\'s in an old theater, and you can still sit in the box seats and read.'},
+      {name:'Buenos Aires Metropolitan Cathedral',type:'site',lat:-34.607569,lng:-58.373257,free:false,desc:'This looks like the Roman pantheon. They also do a changing of the guard every 2 hours starting at 7am.'},
+      {name:'Milonga Malena Sunderland Club',type:'site',lat:-34.564872,lng:-58.484994,free:false,desc:'This is a traditional milonga. Go on a Saturday about 10pm, have dinner, and then dance. It\'s a family affair.'},
+      {name:'Confiteria Ideal',type:'site',lat:-34.60347,lng:-58.379372,free:false,desc:'This place has a matinee milonga, if you don\'t want to stay up until 1am. The building is also gorgeous.'},
+      {name:'Salon Caning (Milonga Parakultural)',type:'site',lat:-34.592772,lng:-58.427522,free:false,desc:'This is one of the leading milongas in Buenos Aires. It is usually packed, but has different levels of tangoers. Rumor is that you should go Monday, Tuesday, or Friday.'},
+      {name:'La Catedral del Tango',type:'site',lat:-34.60491,lng:-58.421549,free:false,desc:'This is place has classes everyday at 6pm. You can stick around and dance afterwards. This is the best place to not be intimidated. It\'s also quite laid back.'},
+      {name:'Plaza Independencia',type:'site',lat:-34.907017,lng:-56.199716,free:false,desc:'This is the center of the city. Check out the Puerta de la Ciudadela.'},
+      {name:'Fortress General Artigas',type:'site',lat:-34.888457,lng:-56.260023,free:false,desc:'Come here for impressive views of the city.'},
+      {name:'Palacio Legislativo',type:'site',lat:-34.891252,lng:-56.187222,free:false,desc:'This is the parliament building and is architecturally very interesting. It has 27 different colors of marble all from Uruguay. You can get guided tours in English at 10:30am and 3pm.'},
+      {name:'Punta Brava',type:'site',lat:-34.930848,lng:-56.159799,free:false,desc:'Come here for a sunset.'},
+      {name:'Pittamiglio Castle',type:'site',lat:-34.920978,lng:-56.149828,free:false,desc:'This is an odd building sandwiched between modern buildings. Built by an alchemist, it\'s quite...eclectic. Tours at 5pm'},
+      {name:'Rambla Mahatma Gandhi',type:'site',lat:-34.924312,lng:-56.154142,free:false,desc:'At 22kms the longest unbroken sidewalk in the world. The views ain\'t so bad either.'},
+      {name:'Feria de Tristan Narvaja',type:'site',lat:-34.901721,lng:-56.177989,free:false,desc:'Sunday market for everything from cheese to antique books and household goods. Worth visitng.'},
+      {name:'Mercado del Puerto',type:'restaurant',lat:-34.905705,lng:-56.211728,free:false,desc:'A market known for pasta and BBQ. Try a matambre.'},
+      {name:'Bar Arocena',type:'restaurant',lat:-34.889852,lng:-56.056511,free:false,desc:'This is where the chivito sandwich was supposedly invented. Try the papas fritas as well.'},
+    ]
+  },
+  rome: {
+    title:'Rome, Italy', center:[41.897,12.476], zoom:13, total:48,
+    stripeUrl:'https://buy.stripe.com/00w7sLbBM3KX97mexNenS03?success_url=https%3A%2F%2Fmaxdinamyte.com%2Frome-success.html%3Ftoken%3Dmdt2026rome',
+    places:[
+      {name:'Roscioli Salumeria con Cucina',type:'restaurant',lat:41.894256,lng:12.474242,free:true,desc:"If you're going to go to one restaurant in Rome, make it this one. Pasta, baked goods, meats, cheeses, wines, everything you need in Italy. Call to make sure you end up with a good table, but even if you end up in the basement, it's worth it."},
+      {name:'Supplizio',type:'restaurant',lat:41.897487,lng:12.467911,free:true,desc:"Roman street food. It's fried, it's delicious. Try the suppli, which are like arancini, but Roman."},
+      {name:'Trevi Fountain',type:'site',lat:41.900932,lng:12.483313,free:true,desc:"It's the Trevi Fountain. You've seen it in postcards. Get there super early to get a view without crowds, then find a place to get a caffe e cornetto."},
+      {name:'Il Goccetto',type:'bar',lat:41.897794,lng:12.467311,free:true,desc:"This is a wine bar, with famously surly servers. The sign over it says \"Vino e Olio.\" There will be a crowd of locals outside, likely smoking. Push inside. There is a large wine list, and nice aperitivo type foods."},
+      {name:'Colosseo',type:'site',lat:41.890569,lng:12.492299,free:true,desc:"It's the Colosseum."},
+      {name:'Monte Testaccio',type:'restaurant',lat:41.875952,lng:12.475694,free:false,desc:'It\'s the Colosseum.'},
+      {name:'Pasquino Bistrot',type:'restaurant',lat:41.898019,lng:12.47183,free:false,desc:'Classic Roman food in the center of the city. If you\'re near Piazza Navona and want to eat, go here. The food is good, which is strange for this part of Rome, and it\'s not outrageously expensive.'},
+      {name:'Testaccio Market',type:'restaurant',lat:41.877685,lng:12.473844,free:false,desc:'This is the food market in the foodiest neighborhood in Rome. Try Mordi e Vai for sandwiches and Chicchi e Lettere for an aperitivo.'},
+      {name:'Mordi e Vai',type:'restaurant',lat:41.877511,lng:12.473402,free:false,desc:'This is a sandwich shop that is fantastic. The allesso di bollito is considered iconic. Take the sandwich to the closed slaughterhouse for a great view.'},
+      {name:'Ristorante la Campana',type:'restaurant',lat:41.902655,lng:12.474581,free:false,desc:'The oldest restaurant in Rome. It is known for classic Roman fare, and has been frequented by many luminaries. Just remember, this restaurant was serving food before Columbus sailed. If you\'re looking for something specific, get the artichokes.'},
+      {name:'Giolitti',type:'restaurant',lat:41.901066,lng:12.477274,free:false,desc:'This is the oldest gelateria in Rome. There will be a massive line, but if you don\'t mind paying a little more, sit at a table. The dishes of ice cream are fantastic, and you get to take a load off your feet.'},
+      {name:'La Matriciana dal 1870',type:'restaurant',lat:41.900191,lng:12.495838,free:false,desc:'One of the classic restaurants of Rome, known for bucatini all\'Amatriciana, which was, of course, invented here.'},
+      {name:'Felice a Testaccio',type:'restaurant',lat:41.878554,lng:12.477454,free:false,desc:'This restaurant dates from the 1930s. It is named after the founder, a man named Felice, who was fabled for sending people away if he just didn\'t like the look of them. The cacio e pepe is famous. Call a week in advance for a reservation. It\'s hard to get into.'},
+      {name:'Taverna Volpetti',type:'restaurant',lat:41.878952,lng:12.478396,free:false,desc:'This is a "deli" serving bread, cheese, charcuterie, etc. You know all the good things. They also make pizzas.'},
+      {name:'Bar San Calisto',type:'restaurant',lat:41.889062,lng:12.470804,free:false,desc:'A fantastic maritozzo, which is a cream filled brioche. And it\'s in a quieter part of Rome.'},
+      {name:'Piperno Restaurant',type:'restaurant',lat:41.892486,lng:12.475996,free:false,desc:'Dating back to 1860, this is a classic restaurant in the Jewish ghetto. The fried artichokes are a specialty as are the fried stuffed zucchini flowers.'},
+      {name:'Nonna Betta',type:'restaurant',lat:41.892778,lng:12.478056,free:false,desc:'This is THE kosher restaurant in the Jewish Ghetto. There are two menus; one for meat and one for fish and cheese.'},
+      {name:'Pizzeria Remo A Testaccio',type:'restaurant',lat:41.880904,lng:12.475466,free:false,desc:'This is a classic Roman pizzeria. Expect it to be cheap and good.'},
+      {name:'Pasticceria Barberini',type:'restaurant',lat:41.878979,lng:12.478733,free:false,desc:'This is one of the best pastry shops in all of Rome. The specialty is a croissant with pistachio cream, and it is top notch. There is also gelato.'},
+      {name:'Antico Forno Roscioli',type:'restaurant',lat:41.894567,lng:12.474278,free:false,desc:'This is an institution known for its pizza. The pizza bianca is particularly good. You can buy wine here and go and eat and drink in a park.'},
+      {name:'Sora Lucia',type:'restaurant',lat:41.9024636,lng:12.4870148,free:false,desc:'This is a fantastic local restaurant. Given the area of Rome (not far from the Trevi Fountain) it\'s hard to find places that are not overpriced and bad. This is one of them. There will be a mix of tourists and local.'},
+      {name:'Trattoria Settimio',type:'restaurant',lat:41.897295,lng:12.46865,free:false,desc:'This is a classic trattoria with a menu that changes every day. It\'s old-school comfort food.'},
+      {name:'Pizzeria Dar Poeta',type:'restaurant',lat:41.891388,lng:12.468544,free:false,desc:'This is one of the most classic traditional Roman pizzerias. Popular with locals.'},
+      {name:'Virginiae',type:'restaurant',lat:41.899075,lng:12.471044,free:false,desc:'Very good traditional Roman food, and not outrageously expensive.'},
+      {name:'Modo Ristorante Caffè',type:'restaurant',lat:41.851973,lng:12.476788,free:false,desc:'This is fantastic traditional Roman food and tiki drinks. It\'s great for aperitivo, but a bit out of the way.'},
+      {name:'Piccolo Buco',type:'restaurant',lat:41.9013,lng:12.484638,free:false,desc:'This is an artisanal pizzeria. It may well be the best in Rome. There will be a line that forms across the street going down the smaller Vicolo Scanderbeg, but it moves quickly. Try the culatello, rucola e pomodorini.'},
+      {name:'Il Palazzetto',type:'bar',lat:41.9065,lng:12.482848,free:false,desc:'This is a rooftop wine bar with views of the Spanish Steps. You can access it at the top of the steps, although it is in the Hassler Hotel.'},
+      {name:'The Court Rooftop Bar',type:'bar',lat:41.890157,lng:12.49556,free:false,desc:'So...just come here for the view of the Colosseum while drinking. Make sure you call ahead, it fills up.'},
+      {name:'Eitch Borromini',type:'bar',lat:41.899106,lng:12.472358,free:false,desc:'Wow! The rooftop bar here "La Grande Bellazza" has a 360 degree view of Rome. Wow!'},
+      {name:'Chicchi & Lettere',type:'bar',lat:41.87744,lng:12.473716,free:false,desc:'This is a good spot for an aperitivo before lunch at the market.'},
+      {name:'Mecenate Palace Hotel',type:'bar',lat:41.896792,lng:12.499881,free:false,desc:'This is a rooftop bar with an incredible view of the Basilica of Santa Maria Maggiore, the resting place of Pope Francis. The prices are reasonable and no need to reserve. It opens at 5pm.'},
+      {name:'9Hotel Cesàri & Terrazza',type:'bar',lat:41.899924,lng:12.479954,free:false,desc:'A chill rooftop bar that has a nice view, but is missed unless you know it\'s there.'},
+      {name:'Hotel NH Collection Roma Fori Imperiali',type:'bar',lat:41.896154,lng:12.484907,free:false,desc:'This is a rooftop bar with a SPECTACULAR view of the Forum. Come here at sunset, you won\'t be disappointed.'},
+      {name:'Spanish Steps',type:'site',lat:41.90599,lng:12.482775,free:false,desc:'These connect Piazza di Spagna at the base and Piazza Trinità dei Monti at the top. It\'s an iconic place. Sit on the steps, eat some pizza and drink some wine.'},
+      {name:"Saint Peter's Square",type:'site',lat:41.902222,lng:12.456728,free:false,desc:'It\'s the Vatican, you have to (holy) see this place. Go into the basilica. Get tickets for the Museum, which is a different entrance. Make sure you get tickets to the Vatican Museum early in the day, and recognize that it\'s Italy, so opening and closing times are fluid.'},
+      {name:'Sistine Chapel',type:'site',lat:41.902947,lng:12.454484,free:false,desc:'It\'s the Sistine Chapel. If you don\'t go, you haven\'t been to Rome. Early admission tickets to the Museum are worth getting. There isn\'t much other than the Chapel and the Raphael room in the Museum.'},
+      {name:'Roman Forum',type:'site',lat:41.892462,lng:12.485325,free:false,desc:'It\'s the Roman Forum.'},
+      {name:'Borghese Gallery and Museum',type:'site',lat:41.91421,lng:12.492144,free:false,desc:'This is a museum specializing in Renaissance art in an old villa. It is a gem of Rome that many tourists miss. You shouldn\'t. A tour guide is worth considering. The grounds are also gorgeous, but are separate from the museum.'},
+      {name:"Castel Sant'Angelo",type:'site',lat:41.903063,lng:12.466276,free:false,desc:'Originally built as Hadrian\'s mausoleum, this fortress has been used as a citadel, prison, and safe location for popes. It connects to the Vatican underground. There is also a rooftop bar here with an amazing view (note it closes at 7:30pm).'},
+      {name:'St. Angelo Bridge',type:'site',lat:41.901788,lng:12.466462,free:false,desc:'This is a pedestrian bridge over the Tiber. It is lined with angel statues sculpted by Bernini.'},
+      {name:'Arch of Constantine',type:'site',lat:41.88977,lng:12.490602,free:false,desc:'This is an arch commemorating the Battle of Milvian Bridge. The arch probably isn\'t worth going to on its own, but since it is right next to the Colosseum, stop by and look at the carvings, which depict the history of Rome.'},
+      {name:'Pantheon',type:'site',lat:41.898611,lng:12.476873,free:false,desc:'This is an old Roman temple built by Hadrian. It eventually became a Catholic Church. Today, it is considered one of the best preserved buildings from antiquity.'},
+      {name:'Giardino degli Aranci',type:'site',lat:41.885058,lng:12.480346,free:false,desc:'This is on the highest hill in Rome (Aventine Hill), and has the best view of the city. Come here at sunset, but get there early as many people, even locals, like to come up here. The gardens were designed in 1932 by Raffaele de Vico. Keep in mind, if you\'re there in the summer the sun will set right next to the Vatican, if not it will be off to the side, but still beautiful.'},
+      {name:'Punto Informativo Appia Antica',type:'site',lat:41.866882,lng:12.502987,free:false,desc:'This is a good spot to start a walk along the Appian Way. You can take it back into Rome. The 118 and 218 buses take you out there.'},
+      {name:'Knights of Malta Keyhole',type:'site',lat:41.882981,lng:12.47847,free:false,desc:'This is a hole in the gardens that allows you to look through it to see St. Peter\'s. It\'s a great view, but all there really is to do at the Priory of the Knights of Malta. If you\'re in the area, like going to the Giardino degli Aranci, but don\'t make a trip here only for this.'},
+      {name:'Domus Aurea',type:'site',lat:41.890622,lng:12.495612,free:false,desc:'This is a villa built by Nero after the fire, and was eventually used as the baths by Trajan. Worth checking out if you have the time.'},
+      {name:'Mouth of Truth',type:'site',lat:41.888106,lng:12.48145,free:false,desc:'This is a marble sculpture that used to be a manhole in the 1st century. In the Middle Ages, the myth became that the sculpture will bite off the hand of a liar if placed in its mouth. There will be a line, and it\'s a bit chaotic.'},
+      {name:'Quadraro',type:'site',lat:41.861878,lng:12.54924,free:false,desc:'This is an area of the city that has recently seen a Renaissance and is full of street art.'}
+    ]
+  }
+,
+  hawaii: {
+    title:'Big Island, Hawaii', center:[19.6,-155.5], zoom:10, total:55,
+    stripeUrl:'https://buy.stripe.com/7sY00jgW6a9l4R6dtJenS02?success_url=https%3A%2F%2Fmaxdinamyte.com%2Fhawaii-success.html%3Ftoken%3Dmdt2026hawaii',
+    places:[
+      {name:'Papakōlea Green Sand Beach',type:'site',lat:18.9361452,lng:-155.6465034,free:true,desc:'One of the more remarkable beaches in the world. The sand here is olivine (aka peridot), giving it a genuinely green color. Getting there requires a hike as there is no paved road access to the beach. Do not take the sand. It is protected and removal is a federal offense.'},
+      {name:'Punaluʻu Beach (Black Sand Beach)',type:'site',lat:19.1357578,lng:-155.5047867,free:true,desc:'A beautiful and easily accessible beach with striking black sand made from fine lava rock. It is not unusual to see sea turtles resting on the warm sand here. It is a genuinely special thing to witness. Do not approach, touch, or disturb any turtles you see. They are federally protected and harassment carries real legal penalties.'},
+      {name:'Kīlauea Visitor Center',type:'site',lat:19.4296642,lng:-155.2571648,free:false,desc:'The visitor center for Kilauea, one of the most active volcanoes in the world. On a good day you can see fountaining and lava moving toward the ocean. It is an extraordinary thing to witness. Always check the National Park Service website before you go for current activity levels, air quality advisories, and access restrictions, as conditions can change quickly and some areas of the park may be closed or hazardous depending on the day'},
+      {name:'Maunakea Visitor Information Station',type:'site',lat:19.7592729,lng:-155.4561238,free:false,desc:'Mauna Kea is a technically active volcano, though dormant in human terms, and at nearly 14,000 feet it is the tallest point in the Pacific. The observatory at the summit sits above the clouds and offers some of the best stargazing on earth. Getting to the top involves a rugged, high-altitude road. We\'d strongly recommend booking a licensed guided tour rather than driving it independently, and checking with the Mauna Kea Visitor Information Station and the University of Hawaii for current access conditions before going. The Visitor Information Station itself is at 9,000 feet on a paved road, is sometimes above the clouds, and can offer fantastic stargazing with considerably less risk.'},
+      {name:'Manta Rays',type:'site',lat:19.5610978,lng:-155.964717,free:false,desc:'Years ago, the hotels around this bay set up lights looking into the water, which drew plankton, which drew manta rays. Now they come into the bay almost every night, and swimming alongside them on a guided tour is one of the more extraordinary things you can do on the Big Island. Book through one of the tour operators licensed by the Hawaii Division of Aquatic Resources. They\'ll walk you through the safety procedures and the rules around the animals. Look for operators with strong safety records and solid reviews before booking.'},
+      {name:'Rainbow Falls',type:'site',lat:19.7192836,lng:-155.109422,free:false,desc:'This is a double barreled waterfall that is easy to get to. It\'s special because of the rainbow formed by the water spilling over the edge of the cliff.'},
+      {name:'Hiilawe Falls',type:'site',lat:20.0977778,lng:-155.5991667,free:false,desc:'This is a breathtaking waterfall that is 1,400 feet tall. Getting there is not easy. It involves either a serious hike or a four-wheel drive descent into Waipiʻo Valley on a steep, unpaved road. We\'d strongly suggest going with a licensed local operator rather than attempting the drive independently. Also worth checking whether water is flowing before you make the trip, as it can dry up between rains. You should verify conditions with local operators or the Hawaii Division of Forestry and Wildlife before going.'},
+      {name:'‘Akaka Falls',type:'site',lat:19.8533838,lng:-155.1562264,free:false,desc:'This is a beautiful waterfall that is easily accessible through the state park. It\'s about a 30 minute walk on a paved trail through rainforest.'},
+      {name:'JoesNuts Macadamia Farm',type:'site',lat:19.43791,lng:-155.8886413,free:false,desc:'This is a macadamia nut farm where you can do tours and then eat delicious macadamia nuts.'},
+      {name:'Umauma Falls',type:'site',lat:19.9050894,lng:-155.141825,free:false,desc:'A gorgeous tiered waterfall worth the detour. Access is through a private nature park that charges an entry fee for a self-guided tour. You cannot simply walk up to it on your own, as the surrounding land is private property. Book through the official operator before visiting.'},
+      {name:'Hawaiʻi Volcanoes National Park',type:'site',lat:19.4963669,lng:-155.4661859,free:false,desc:'Far more than just Kilauea, this park is a landscape unlike anything else in the United States, and possibly the world. Before you go, check the National Park Service website for what\'s currently open and what isn\'t. Volcanic activity can shift quickly, and the NPS will have the most up-to-date guidance on what\'s accessible and what areas to avoid.'},
+      {name:'Pololū Valley Lookout',type:'site',lat:20.2035807,lng:-155.7338497,free:false,desc:'One of the most stunning views on the island. The cliffs here look like something out of a movie. There is a trailhead at the top, but it is a serious and physically demanding hike, not a casual walk. You need to check in before attempting it, and we\'d strongly recommend consulting the Hawaii Division of Forestry and Wildlife on current trail conditions before you go.'},
+      {name:'Hōlei Sea Arch',type:'site',lat:19.294522,lng:-155.0979354,free:false,desc:'At the end of Chain of Craters road is a parking lot. From that parking lot is a paved trail. About a quarter mile down that trail is a beautiful view of the cliffs and the Holei Sea Arch, which is a natural arch in the cliff.'},
+      {name:'Pu‘uloa Petroglyphs',type:'site',lat:19.2927086,lng:-155.1220451,free:false,desc:'The Big Island has many points where you can see petroglyphs created by ancient Hawaiians. This is one of the best places to see them as it is a large field of petroglyphs and it\'s a relatively easy hike of about 1.25 miles.'},
+      {name:'Kaloko-Honokōhau National Historical Park',type:'site',lat:19.6778522,lng:-156.0216868,free:false,desc:'This is a national park where petroglyphs are visible from a boardwalk trail. It is worth a stop if you have a bit of time as they have also recreated some houses and a temple. It is free.'},
+      {name:'Banyans Beach',type:'site',lat:19.6065748,lng:-155.9767514,free:false,desc:'One of the best places on the island to watch serious surfers do their thing. The waves here are truly awe-inspiring. This is a genuine big-wave surf location with large reef breaks, so if you\'re thinking about getting in the water, assess conditions carefully and independently before doing so.'},
+      {name:'Hapuna Beach State Recreation Area',type:'site',lat:19.9913889,lng:-155.825,free:false,desc:'One of the best spots to view the famous Hawaiian sunsets. It\'s got white sands and beautiful blue water. It can get crowded at sunset, so make sure you plan accordingly.'},
+      {name:'Kaunaʻoa (Mauna Kea) Beach',type:'site',lat:20.0046492,lng:-155.8245743,free:false,desc:'A white sand beach that affords fantastic sunsets. One of the great things about this beach is that you can rent a cabana for the day.'},
+      {name:'Carlsmith Beach Park',type:'site',lat:19.7336174,lng:-155.0277389,free:false,desc:'A beautiful snorkeling spot with clear water and abundant marine life. Sea turtles are sometimes present. It is a genuinely extraordinary thing to see. If you see a turtle , keep your distance and do not touch or approach them. They are federally protected under the Endangered Species Act and the Marine Turtle Protection Act, and interfering with them carries real legal consequences.'},
+      {name:'Parker Ranch',type:'site',lat:20.0198559,lng:-155.6820739,free:false,desc:'Ranches are not just a Texas thing. Parker Ranch is the oldest and largest working ranch on the Big Island. You can book self-guided tours of the facilities, and on July 4th weekend there is a rodeo and horse racing. It\'s truly odd to think about a cattle ranch on an island, but this is a BIG island.'},
+      {name:'Greenwell Farms',type:'site',lat:19.511024,lng:-155.9204432,free:false,desc:'This is the oldest operating coffee plantation on the Big Island, making it the oldest in the United States. You can do tours and tasting everyday.'},
+      {name:'Poke Market',type:'restaurant',lat:19.7261819,lng:-155.0873508,free:true,desc:'This is widely considered the best poke on the island if not in the islands.'},
+      {name:'Honaunau Poke Shop',type:'restaurant',lat:19.4464308,lng:-155.8796838,free:true,desc:'Another poke shop. Try the garlic scallops and/or the ho\'io.'},
+      {name:'Kawaihae Marketplace',type:'restaurant',lat:20.0386132,lng:-155.8296004,free:false,desc:'More poke. Try the wasabi pistachio ahi.'},
+      {name:'Da Poke Shack',type:'restaurant',lat:19.6079178,lng:-155.9771731,free:false,desc:'This is a very popular poke shop that often has lines out the door. It\'s known for being some of the freshest poke on the Big Island.'},
+      {name:'Hale I\'a Da Fish House',type:'restaurant',lat:20.0389111,lng:-155.8298404,free:false,desc:'This is not just poke, although they do have that and it is considered some of the best. It has all types of fish platters. The mahi mahi and marlin are particularly popular.'},
+      {name:'Original Big Island Shave Ice Co.',type:'restaurant',lat:19.9161665,lng:-155.8819303,free:false,desc:'Hawaii is famous for it\'s shaved ice, and this is one of the best shaved ice shops on the Big Island. Get the Noelani, you won\'t be disappointed.'},
+      {name:'GJ\'s Huli Chicken',type:'restaurant',lat:20.0260975,lng:-155.657537,free:false,desc:'Huli huli chicken is sweet and savory BBQ chicken. GJ\'s is probably the best on the the Big Island, and is reasonably priced.'},
+      {name:'Suisan Fish Market',type:'restaurant',lat:19.723899,lng:-155.0701638,free:false,desc:'This poke shop is often recommended by locals. It is in an actual fish market, so it is certainly more industrial.'},
+      {name:'Hilo Farmer\'s Market',type:'restaurant',lat:19.7229776,lng:-155.084795,free:false,desc:'Normally, when traveling, farmer\'s markets are difficult. You rarely have the facilities to use what you can buy, but this is different. This is a prime location to find a Kona Sugarloaf pineapple, which is a delicious, sweet, low-acid, white pineapple that doesn\'t travel well. They\'re in season from late spring through summer. Only open on Wednesday and Saturday. Also, try the Kula Shave Ice, which is open all week not just on market days.'},
+      {name:'Kaaloa\'s Super J\'s',type:'restaurant',lat:19.4536491,lng:-155.8799224,free:false,desc:'This is a very local and casual place. It is also where to go for lau lau, which is butterfish and pork wrapped in taro leaves and is a Hawaiian staple. They also do very good kalua pig.'},
+      {name:'Cafe 100 Inc',type:'restaurant',lat:19.7144284,lng:-155.0771913,free:false,desc:'This is an old school drive in, and is well known for it\'s loco moco, which is a Hawaiian food that involves, rice, gravy, hamburgers and fried eggs.'},
+      {name:'Menehune Coffee Company',type:'restaurant',lat:19.441298,lng:-155.880016,free:false,desc:'This is a very local coffee shop that does breakfast and lunch. The pancakes with haupia sauce are definitely the star of the show. The coffee is 100% Kona.'},
+      {name:'Kona Farmers Market',type:'restaurant',lat:19.6370647,lng:-155.9918398,free:false,desc:'Like with the Hilo Farmer\'s Market, you are here looking for a Kona Sugarloaf. It\'s the largest in the Kona area. Open Wednesday through Sunday from 7am to 4pm.'},
+      {name:'Ken\'s House of Pancakes',type:'restaurant',lat:19.7223069,lng:-155.0646887,free:false,desc:'This is an old school dinner and where to go for macadamia nut pancakes/waffles with coconut syrup. They\'re fantastic.'},
+      {name:'Randy\'s Huli Chicken and Ribs',type:'restaurant',lat:19.5230713,lng:-155.9216662,free:false,desc:'In the conversation with GJ\'s for the best huli huli chicken on the island.'},
+      {name:'Tex Drive-In',type:'restaurant',lat:20.0718618,lng:-155.46448,free:false,desc:'This is quintessential Hawaiian platters. The food is fantastic, and most importantly, try the malasadas, which are like a Portuguese donut.'},
+      {name:'Punalu\'u Bake Shop',type:'restaurant',lat:19.0612549,lng:-155.5859636,free:false,desc:'This is the southernmost bakery in the United States and is famous for Hawaiian sweet bread. They have sandwiches, burgers, soups, breakfast, coffee, ice cream and malasadas, all with a very pretty outdoor area to sit and relax.'},
+      {name:'Ippy’s Hawaiian BBQ',type:'restaurant',lat:20.0243792,lng:-155.6613774,free:false,desc:'Another well regarded Hawaiian BBQ restaurant. Think kalua pig, teriyaki, and loco moco.'},
+      {name:'Ning\'s | Thai Cuisine',type:'restaurant',lat:19.4940856,lng:-154.945049,free:false,desc:'Very good Thai food. This place is authentically and seriously spiced. If you have any sensitivity to heat, make sure to let them know that, clearly, when ordering, and consider going a level lower than you normally would.'},
+      {name:'The Coffee Shack',type:'restaurant',lat:19.4752736,lng:-155.892272,free:false,desc:'Coffee, breakfast and lunch, but the real reason to come here is the view of the bay. It might not look close to the ocean on the map, but it gives a great panoroma. Also, you\'re likely to be greeted by a large number of geckos who like to hang out on the lanai.'},
+      {name:'Manago Restaurant',type:'restaurant',lat:19.4892272,lng:-155.9109887,free:false,desc:'This is an absolute staple of the Big Island. At over 100 years old, it has been given the James Beard American Classics Award.'},
+      {name:'Teshima\'s Restaurant',type:'restaurant',lat:19.5418215,lng:-155.9288843,free:false,desc:'Do NOT miss Teshima. Started as a grocery in the early 1900s today it is fantastic Japanese-American food. It feels classic, but more importantly, the food is superb. They don\'t take reservations, but they guarantee that if you\'re in line, you will get seated, which means, if you\'re in line before the place closes, you will get fed.'},
+      {name:'Our Founding Farmers Ice Cream Shop',type:'restaurant',lat:20.2382766,lng:-155.8318578,free:false,desc:'This is an absolutely fantastic local ice cream shop. They do some very interesting flavors made from local fruits and produce. In fact, they are often advertising to locals that they are buying produce. I highly recommend the chocolate and chili combined with the Suriname cherry.'},
+      {name:'Kaleo\'s | Bar & Grill',type:'restaurant',lat:19.494162,lng:-154.9446022,free:false,desc:'Afford burgers, seafood, BBQ, and poke. Try the lilikoi (passionfruit) cheesecake.'},
+      {name:'KaiLoki’s Restaurant Southernmost bar in the U.S',type:'restaurant',lat:19.0863531,lng:-155.7796578,free:false,desc:'This is a classic, roadside Hawaiian cafe. It\'s not fancy, and the food isn\'t going to win any awards, but it tastes good if you just did a long hike to the Green Sand Beach. It\'s super laid back.'},
+      {name:'Hilo Brewing Company',type:'bar',lat:19.7060898,lng:-155.0691906,free:true,desc:'This is a craft brewery with a tasting room. I go for the Island Lager, because I just want beer flavored beer on a warm day.'},
+      {name:'Kona Brewing Co.',type:'bar',lat:19.6430824,lng:-155.9975195,free:false,desc:'If you\'ve had one Hawaiian beer on the mainland, it\'s probably this one. It\'s a brewpub, so they have food too.'},
+      {name:'Moon and Turtle',type:'bar',lat:19.7254179,lng:-155.0871554,free:false,desc:'This is a craft cocktail bar that does both new cocktails and the classics.'},
+      {name:'Kuleana Rum Shack',type:'bar',lat:19.9140394,lng:-155.8791776,free:false,desc:'You can do rum tastings, mai tai classes, or just choose from the enormous menus of cocktails. The food is pretty good too.'},
+      {name:'Kona Inn Restaurant',type:'bar',lat:19.6377484,lng:-155.9932741,free:false,desc:'Come for the mai tais, stay for the stunning view.'},
+      {name:'Don the Beachcomber',type:'bar',lat:19.632295,lng:-155.990658,free:false,desc:'It\'s the Don the Beachcomber. It\'s mai tais.'},
+      {name:'Lava Lava Beach Club',type:'bar',lat:19.9132977,lng:-155.8879458,free:false,desc:'This is a mai tai bar that is all about the location. Right on the beach, it\'s a perfect place to relax with a drink. Yeah, it\'s built for tourists, but who cares when you\'re drinking a tropical drink with a view like this.'},
+      {name:'The Hidden Nēnē',type:'bar',lat:19.7236099,lng:-155.0862397,free:false,desc:'Considered to be one of the best mai tais on the Island, they do far more than just a mai tai.'},
+      {name:'Huggo\'s',type:'bar',lat:19.6331134,lng:-155.9900502,free:false,desc:'This is considered one of the staples of Big Island beach bars. Decent mai tais and good views at sunset.'}
+    ]
+  },
+  paris: {
+    title:'Paris, France', center:[48.856, 2.347], zoom:13, total:69,
+    stripeUrl:'https://buy.stripe.com/dRmdR99tE95herGexNenS04',
+    places:[
+      {name:'Élysée Palace',type:'site',lat:48.870416,lng:2.316754,free:false,desc:'This is the home of the President of France. It\'s an interesting building to see, and during European Heritage Days in the fall, you can actually see the interior.'},
+      {name:'The Basilica of the Sacred Heart of Paris',type:'site',lat:48.886706,lng:2.343023,free:false,desc:'This is a relatively new basilica at Montmartre, at least for Paris, and therefore, overlooking Paris. It\'s a pretty great view from here. The church itself is relatively uninspiring, but around the corner at Montmartre Square is an enclave of artists, it\'s really cool.'},
+      {name:'Montmartre',type:'site',lat:48.886666,lng:2.340195,free:false,desc:'This is a famous bohemian area of Paris. While the main square, Place du Tertre is often filled with artists.'},
+      {name:'Cathédrale Notre-Dame de Paris',type:'site',lat:48.852968,lng:2.349902,free:false,desc:'This is the center of Paris. The cathedral is obviously famous, and it is worth a look around, particularly since the renovation after the fire.'},
+      {name:'Quartier Pigalle',type:'site',lat:48.88219,lng:2.337281,free:false,desc:'This is a section of the city that was the center of the Bohemian life. It got its name from American GIs during WWII who frequented the women selling their services. Today, it\'s one of the hippest sections of the city full of restaurants, bars, etc.'},
+      {name:'Église Saint-Sulpice',type:'site',lat:48.85101,lng:2.335009,free:false,desc:'Church in the Latin Quarter. The view from the top is fantastic, but is often times closed to the public.'},
+      {name:'Eiffel Tower',type:'site',lat:48.85837,lng:2.294483,free:true,desc:'Yeah, so this is the Eiffel Tower. I don\'t think it needs a description.'},
+      {name:'The Centre Pompidou',type:'site',lat:48.860642,lng:2.352245,free:false,desc:'This is the public library for Paris, as well as the largest modern art museum in Europe and a center for music and acoustic research.. The building is quite interesting. It is loved by about half of Parisians, and hated by the other half. I think it kind of looks like a gerbil cage. Unfortunately, it is closed for renovations until 2030, but you can still see the building, for now.'},
+      {name:'Musée de Louvre',type:'site',lat:48.861014,lng:2.335858,free:false,desc:'This is the world\'s 2nd largest museum. It is dedicated to Renaissance art. It houses the Mona Lisa, Winged Victory, the Venus de Milo, and Hammurabi\'s Code.'},
+      {name:'Musée d\'Orsay',type:'site',lat:48.859961,lng:2.326561,free:false,desc:'This is an art museum in an old train station designed by Gustav Eiffel. It is the main museum dedicated to impressionist art, and has the largest impressionist collection in the world (i.e. Monet, Manet, Cezanne, Renoir, Degas, Cassatt, and Whistler\'s Mother).'},
+      {name:'Les Invalides',type:'site',lat:48.855274,lng:2.312503,free:false,desc:'This is Napoleon\'s Tomb. For a small man, it is an imposing tomb, and worth a visit.'},
+      {name:'Tour Montparnasse',type:'site',lat:48.842129,lng:2.32197,free:false,desc:'This is the only skyscrapper inside the city limits of Paris. It is also one of the ugliest buildings in the world. There is an observation deck at the top, however, it is currently closed for a major renovation.'},
+      {name:'Palais Garnier',type:'site',lat:48.871934,lng:2.331767,free:false,desc:'This is the opera house for Paris. It is one of the three most prestigious opera houses in the world (La Scala in Milan, and the Met in New York being the other two). The building is gorgeous, and there are tours. It\'s also pretty amazing to see an opera here, but it can be €€€€.'},
+      {name:'Luxembourg Gardens',type:'site',lat:48.846222,lng:2.33716,free:false,desc:'This is one of the main parks in Paris. It\'s a really nice place to spend some time just chillin\'.'},
+      {name:'Place Saint-Michel',type:'site',lat:48.853535,lng:2.343817,free:false,desc:'This is the centre of Saint-Michel/Le Quartier Latin. Essentially, this is the heart of the student section of Paris. On a nice day, the students from the Sorbonne will gather here and be intellectual.'},
+      {name:'Père Lachaise Cemetery',type:'site',lat:48.861393,lng:2.393328,free:true,desc:'This is one of many old cemeteries in Paris, but this one is full of famous people. From Chopin and Moliere, to Oscar Wilde and Edith Pilaf, to Jim Morrison.'},
+      {name:'Pont Neuf',type:'site',lat:48.85705,lng:2.341325,free:false,desc:'This is the oldest bridge in Paris. People tend to gather here and just enjoy a nice day out.'},
+      {name:'Marché de Belleville',type:'site',lat:48.870379,lng:2.379283,free:false,desc:'This is one of the best food markets in the city. It\'s decidedly multi-cultural, giving off strong souk vibes'},
+      {name:'Rodin Museum',type:'site',lat:48.855307,lng:2.315835,free:false,desc:'This is Rodin\'s former studio. The exhibit is amazing. It include the original "Thinker," "Burghers of Calais" but more impressive is the "Gates of Hell."'},
+      {name:'Marche aux Puces',type:'site',lat:48.90226,lng:2.342399,free:false,desc:'This is the biggest flea market in Paris. Yeah, there is shopping here, but it needs to be seen. Also, there are regularly people playing jazz here.'},
+      {name:'Square Suzanne Buisson',type:'site',lat:48.887999,lng:2.337654,free:false,desc:'Boule is French bocce, and while the French don\'t have a reputation for being as loud as their Italian cousins, games can get heated. This is a great little bouledrome for interacting with locals. You can get a boule set at just about any Decathlon in the city.'},
+      {name:'Catacombs of Paris',type:'site',lat:48.833832,lng:2.332422,free:false,desc:'These are the underground tombs and tunnels of Paris. This is a really cool thing to see, but you have to book it in advance and it\'s not super cheap.'},
+      {name:'Palace of Versailles',type:'site',lat:48.804865,lng:2.120355,free:false,desc:'This was the palace built by Louis XIV. It is a symbol of decadence and extravagance. It is also one of the reasons the French revolted under Louis XVI. It\'s a bit of a trek to get out to it, so if you want to go on a free day, plan ahead, and know you will be there most of the day.'},
+      {name:'L\'Arc de Triomphe de l\'Etoile',type:'site',lat:48.873779,lng:2.295016,free:false,desc:'This is the monument to those who died in the French Revolution and the Napoleonic Wars. It\'s a pretty spectacular monument. Going to the top at sunset is worth it. You can see the lights come on all over the city. It\'s more than 200 steps up.'},
+      {name:'Champs-Élysées',type:'site',lat:48.871691,lng:2.301822,free:false,desc:'This is likely the most exclusive street in the world. You can go shopping here, if you have millions of Euros to spend.'},
+      {name:'Fondation Claude Monet',type:'site',lat:49.075384,lng:1.533702,free:false,desc:'This is the home of Claude Monet where he painted his famous "Waterlillies." The house is exactly the way it was when he lived there, as are the ground. Like Versailles, this is an all day trip, so make sure you are willing to give up a day in Paris to go out here.'},
+      {name:'Au P\'tit Grec',type:'restaurant',lat:48.842767,lng:2.349561,free:false,desc:'Delicious crepes. They\'re not necessarily the most traditional, but they are fantastic.'},
+      {name:'Quai Saint-Michel',type:'restaurant',lat:48.853481,lng:2.34538,free:false,desc:'This is the area along the river. It is a great place to bring food and wine and have lunch or dinner. Essentially, just go get some charcuterie, fromage, et pain.'},
+      {name:'Les Deux Magots',type:'restaurant',lat:48.854052,lng:2.333106,free:false,desc:'This is a famous cafe in the Latin Quarter. It is where all the famous intellectuals and literary figures of during the late 1800s and early 1900s. It\'s a bit touristy, but a pretty cool place to see, considering who used to frequent it.'},
+      {name:'Pierre Hermé',type:'restaurant',lat:48.851522,lng:2.332767,free:false,desc:'This is a patisserie with known for having some of the best macaron in Paris. Are they the best, who can really tell, but, if you like sweet, this is a MUST.'},
+      {name:'L\'as du Fallafel',type:'restaurant',lat:48.857379,lng:2.359163,free:true,desc:'This is the best Middle Eastern food in Paris. It is truly a must visit, and worth the wait. But you will be eating it while walking down the street.'},
+      {name:'Zerda Café Paris 10',type:'restaurant',lat:48.86917,lng:2.357268,free:false,desc:'This is the most famous couscous restaurant in Paris. Yes, that sounds weird, but couscous is an important part of modern French cuisine.'},
+      {name:'Les Philosophes',type:'restaurant',lat:48.85733,lng:2.357494,free:false,desc:'This is an affordable, and fantastic French cafe. The chef refuses to use anything mass produced. The confit de canard (duck confit) is one of the best in the city.'},
+      {name:'Aux Delices du Palais',type:'restaurant',lat:48.825866,lng:2.312687,free:false,desc:'This is one of the better boulangeries in Paris. Go for a sandwich or just a straight up baguette (I prefer the flute).'},
+      {name:'La Créperie Saint Germain',type:'restaurant',lat:48.85327,lng:2.341705,free:false,desc:'If you\'re looking for good, simple crepes, look no further.'},
+      {name:'Du Pain et des Idées',type:'restaurant',lat:48.871245,lng:2.36289,free:false,desc:'This is one of the best boulangeries in Paris. Try Les Escargots, these are not actually snails but pastries.'},
+      {name:'Berthillon Glacier',type:'restaurant',lat:48.851677,lng:2.356703,free:false,desc:'Yes, it is famous. It is still the best ice cream in Paris. There are multiple locations to get it on the island. The cafe facing the back of Notre Dame is a bit more touristy.'},
+      {name:'Grande Mosquée de Paris',type:'restaurant',lat:48.841842,lng:2.355172,free:false,desc:'The garden of the mosque is beautiful and they have good pastries and mint tea.'},
+      {name:'L\'Écurie',type:'restaurant',lat:48.847244,lng:2.348084,free:false,desc:'Miniscule bistro, but like stepping back into the 1920s. The church is like a postcard, which is probably why it was the spot that Owen Wilson was picked up in "Midnight in Paris."'},
+      {name:'Aux Lyonnais',type:'restaurant',lat:48.870745,lng:2.338788,free:false,desc:'This place was originally run by Chef Alain Ducasse, but was sold to the Dumon family. That did not make it any cheaper. But it is old, beautiful, and full of classic Lyonnais food.'},
+      {name:'Pho tai',type:'restaurant',lat:48.822139,lng:2.361378,free:false,desc:'Known to be the best phô in France.'},
+      {name:'Relais de l\'Entrecôte Saint-Germain',type:'restaurant',lat:48.854603,lng:2.332766,free:true,desc:'This is steak frites, and only steak frites. There is no menu, just tell the waiter how you want the steak cooked.  1. Au bleu is raw; only the outside heated. 2. Saignant is rare; the center is perceptibly warm. 3. À point is rare; the blood coagulated and the center is hot. 4. Bien is what Americans would call medium. 5. Bien cuit is medium well; the center is still a bit pink.'},
+      {name:'Le Severo',type:'restaurant',lat:48.831997,lng:2.324575,free:false,desc:'A very good Parisian bistro. The tartare is particularly good, but you really can\'t go wrong with anything.'},
+      {name:'Rimal',type:'restaurant',lat:48.881126,lng:2.312642,free:false,desc:'This is spectacular Lebanese food, and remember, this is Paris, which means it\'s probably the best Lebanese food not in Lebanon.'},
+      {name:'Les 3 Frères',type:'restaurant',lat:48.887567,lng:2.353655,free:false,desc:'This is, quite simply, the best Algerian food north of Marseille. When I go to Paris, this is one of only two or three restaurants I 100% make time for.'},
+      {name:'Chez Paul',type:'restaurant',lat:48.85282,lng:2.374342,free:false,desc:'One of the most traditional and classic French bistros left in Paris. Be ready for some old school French cooking. Not very expensive.'},
+      {name:'La Jacobine',type:'restaurant',lat:48.853466,lng:2.338888,free:false,desc:'It\'s hard to find any cafe in Paris not jammed with tourists these days. La Jacobine is about as close as you can get. The food is good, and the atmosphere is very French.'},
+      {name:'Le Tambour',type:'restaurant',lat:48.865416,lng:2.344658,free:false,desc:'Eccentric but fantastic bistro. A relative unicorn in Paris, it\'s open late and not expensive.'},
+      {name:'Le Charivari',type:'restaurant',lat:48.842707,lng:2.329653,free:false,desc:'This is the place to go for tartare. So, get the tartare.'},
+      {name:'Barthélémy',type:'restaurant',lat:48.854459,lng:2.325534,free:false,desc:'This is a traditional cheese shop. Emmanuel Macron buys all his cheese here, and while Macron might not be popular these days, it\'s hard to argue that a French president doesn\'t know his cheese.'},
+      {name:'La Bague de Kenza',type:'restaurant',lat:48.86634,lng:2.376861,free:false,desc:'There are now multiple locations of this Algerian bakery, but this is the original and the biggest. It looks like no other bakery you\'ve ever seen, AND the baked goods are fantastic.'},
+      {name:'Chez Fred, bouchon lyonnais depuis 1945',type:'restaurant',lat:48.881233,lng:2.289735,free:false,desc:'Lyon is the gastronomical capital of France, therefore it might be the gastronomical capital of the world. This is a fantastic traditional Lyonnais buchon.'},
+      {name:'L\'Éclair de Génie Café',type:'restaurant',lat:48.8679213,lng:2.3439371,free:false,desc:'These are fancy eclairs, with flavors beyond the normal chocolate, coffee and vanilla. They might be the best eclairs in the world.'},
+      {name:'Bar 228',type:'bar',lat:48.865328,lng:2.328128,free:false,desc:'This is a lounge with leather and a gorgeous back bar. It was also the Nazi HQ during WWII.'},
+      {name:'La Closerie Des Lilas',type:'bar',lat:48.840144,lng:2.336043,free:false,desc:'Another institution. This is where Hemingway wrote "The Sun Also Rises." In the evening it works as a piano bar.'},
+      {name:'Harry\'s New York Bar',type:'bar',lat:48.869202,lng:2.332069,free:true,desc:'This is a Paris institution that was frequented by the most important literary figures of the 1920s. Today it\'s still owned by the same family as when it was founded.'},
+      {name:'Glass',type:'bar',lat:48.88149,lng:2.337239,free:false,desc:'This is a very good cocktail bar, and most importantly, it is open late, which is not always common in Paris.'},
+      {name:'Moulin Rouge',type:'bar',lat:48.884123,lng:2.332252,free:false,desc:'This is the famous cabaret. They still do a cabaret show, which is €€€€, but definitely a sight to see. Keep in mind, it is a cabaret show, so it is, shall we say, for adults only.'},
+      {name:'Paradis Latin',type:'bar',lat:48.847993,lng:2.352866,free:false,desc:'Besides the Moulin Rouge, this is the other big cabaret in Paris. It is less famous, slightly less expensive, but I think better. The building was designed by Gustav Eiffel. Again, this is a cabaret, so, think adults only.'},
+      {name:'Au Petit Suisse',type:'bar',lat:48.849222,lng:2.339232,free:false,desc:'This is an old cafe that is well known for aperitifs.'},
+      {name:'Le Syndicat',type:'bar',lat:48.871778,lng:2.353558,free:false,desc:'France has some unique liquors that can\'t be found anywhere else. This place dedicated to using these little known French liquors.'},
+      {name:'Compagnie des vins surnaturels',type:'bar',lat:48.851614,lng:2.336273,free:false,desc:'France is known for wine. If you\'re looking for wine, search no further. This is wine bar with over 300 wines available.'},
+      {name:'Delaville Café',type:'bar',lat:48.870772,lng:2.349147,free:false,desc:'This is a brasserie in an old brothel. It has all the flair of a grand building, and a beautiful terrace. The upstairs lounge is a fantastic place for aperitif.'},
+      {name:'Le Baiser Salé',type:'bar',lat:48.859866,lng:2.347761,free:false,desc:'This is one of the premier jazz clubs in Paris. It\'s small and cheap. Oh, and there is no electronic amplification.'},
+      {name:'38 Riv',type:'bar',lat:48.856472,lng:2.356533,free:false,desc:'This is an underground jazz club. Literally, it\'s underground, in a cave. It is one of the more special locations in Paris for live music.'},
+      {name:'Silencio',type:'bar',lat:48.868989,lng:2.343399,free:false,desc:'Another jazz club in a city deeply connected to the genre. This one, however, is a bit different as it is only open to the public after midnight. It was also designed by recently deceased director David Lynch, so expect the surreal.'},
+      {name:'Hotel Belmont',type:'bar',lat:48.869217,lng:2.29781,free:false,desc:'This is just a gorgeous cocktail lounge serving the classics and short walk to the Champs-Elysees.'},
+      {name:'Legrand Filles et Fils',type:'bar',lat:48.866354,lng:2.339825,free:false,desc:'This is a wine bar. Maybe it is THE wine bar. Seriously, you can\'t imagine how much wine they have.'},
+      {name:'L\'Escargot Montorgueil',type:'restaurant',lat:48.864204,lng:2.346698,free:false,desc:'I think it\'s pretty clear what they have, the most French of all foods, escargot, and many different types of it.'}
+    ]
+  },
+  florence: {
+    title:'Florence, Italy', center:[43.7696, 11.2558], zoom:14, total:44,
+    stripeUrl:'https://buy.stripe.com/bJe7sL21cftFcjy75lenS05',
+    places:[
+      {name:'Accademia Gallery',type:'site',lat:43.776814,lng:11.258642,free:false,desc:'This is a very small museum with really only one big ticket item, Michelangelo\'s David. Buy tickets beforehand, and plan for about 30 minutes.'},
+      {name:'Cathedral of Santa Maria del Fiore',type:'site',lat:43.773145,lng:11.25596,free:false,desc:'Il Duomo. It is the center of the city. If you don\'t see this place in Florence, you\'ve done Florence wrong. The outside is far more spectacular than the inside, particularly the doors, but it\'s worth a step inside. The view from the top of the Dome is fantastic. It involves a climb of around 463 steps through a narrow passage between the inner and outer shells of the dome.'},
+      {name:'Pitti Palace',type:'site',lat:43.765153,lng:11.250008,free:false,desc:'This is the "new" Medici palace. It has gorgeous grounds you can walk around. A somewhat nice respite from the crowds.'},
+      {name:'Palazzo Vecchio',type:'site',lat:43.769301,lng:11.256151,free:false,desc:'This is the Medici\'s old palace. It\'s worth a visit, particularly the Room of 500.'},
+      {name:'Uffizi Gallery',type:'site',lat:43.767786,lng:11.255311,free:true,desc:'This is a Renaissance art museum. It\'s one of the best in the world. There are a number of famous pieces, like Botticelli\'s "Birth of Venus." My favorite, however, is Caravaggio\'s "Medusa."'},
+      {name:'Basilica di San Lorenzo',type:'site',lat:43.774962,lng:11.253876,free:false,desc:'This church was considered to be the Medici\'s church. It\'s beautiful in it\'s own right, but the most incredible thing here is "La Stanza Segreta." This is a secret room only discovered in the 1970s. Michelangelo hid in this room during an exile, and the walls are covered in his drawings. They only allow 4 people in every 90 minutes, so make sure you get tickets well in advance.'},
+      {name:'Piazzale Michelangelo',type:'site',lat:43.762931,lng:11.265056,free:false,desc:'This is a super famous spot for a view of the city. It is beautiful at sunset, and while it gets crowded, it is not unpleasantly crowded. The walk up the hill, however, is not necessarily the easiest.'},
+      {name:'Scuola del Cuoio S.r.l.',type:'site',lat:43.768352,lng:11.263744,free:false,desc:'This is a school for training leather workers. Come here to see them working and you can buy nice leather goods.'},
+      {name:'Basilica of Santa Croce in Florence',type:'site',lat:43.768568,lng:11.262268,free:false,desc:'This is a church on a huge piazza. In the church are a bunch of famous graves, including Michelango and Dante. The piazza is used for festivals, most famously cacio storico (which is a combination of rugby, soccer and boxing).'},
+      {name:'Mercato del Porcellino',type:'site',lat:43.769987,lng:11.254271,free:false,desc:'One of the two leather markets in town. The more touristy of the two, but worth a visit. Also, pat the pig fountain on the nose for good luck.'},
+      {name:'Piazza del Mercato Centrale',type:'site',lat:43.776643,lng:11.253786,free:true,desc:'The less touristy of the two big leather markets in town.'},
+      {name:'Ponte Vecchio',type:'site',lat:43.767925,lng:11.253144,free:false,desc:'This is the old bridge in town. It is covered in jewelry stores. Also, running along the top is the Vasari Corridor (which you can get tickets to tour). It was a hallway built between the Uffizi and the Pitti Palace to let the Medicis go back and forth without getting accosted by unhappy Florentines.'},
+      {name:'Brac',type:'restaurant',lat:43.767666,lng:11.258258,free:false,desc:'Hole in the wall that is popular with locals, and anything but traditional. Just get a mixed platter. You\'ll be happy.'},
+      {name:'Il Guerrino',type:'restaurant',lat:43.580604,lng:11.302972,free:false,desc:'This is a tiny restaurant with a panoramic view of the valley. They cook all food on a focolare (fireplace). It is off the beaten path, so check hours before you go.'},
+      {name:'La Cantinetta Di Rignana',type:'restaurant',lat:43.561069,lng:11.267167,free:false,desc:'This restaurant that uses fresh, seasonal ingredients from Tuscany. It has a fantastic terrace overlooking the vines. You can also have wine made from grapes on the property.'},
+      {name:'Osteria Le Panzanelle',type:'restaurant',lat:43.518889,lng:11.311667,free:false,desc:'This is a little neighborhood restaurant with a nice area for outdoor dinning. Try the cacio e pepe, but definitely go for desserts too.'},
+      {name:'Osteria Al Ponte',type:'restaurant',lat:43.466609,lng:11.434587,free:false,desc:'This restaurant is well known for a fantastic selection of Chianti wines. The food is good too; try the crostini neri and wild boar and porcini mushrooms.'},
+      {name:'Arà: è Sicilia',type:'restaurant',lat:43.77623,lng:11.258433,free:false,desc:'This is Sicilian street food. Come here if you\'ve had your fill of wild boar ragu, truffles, and unsalted bread. Get the arancini and the cannoli.'},
+      {name:'Zeb',type:'restaurant',lat:43.764095,lng:11.261202,free:false,desc:'This is a restaurant that used to be a grocery store. The current owners make all meals from local Tuscan foods.'},
+      {name:'Osteria delle Tre Panche',type:'restaurant',lat:43.768535,lng:11.253913,free:false,desc:'This is a tiny restaurant with only three benches, but the things it does with truffles are amazing, and when you\'re in Florence, you need to eat truffles.'},
+      {name:'Trattoria 13 Gobbi',type:'restaurant',lat:43.772345,lng:11.246775,free:false,desc:'This place is a little kitsch, but it is known for its bistecca and fagiole (steak and white beans), which is a Florentine speciality.'},
+      {name:'Mercato Centrale',type:'restaurant',lat:43.776517,lng:11.253051,free:false,desc:'The refurbished central market. The first floor is butchers, fruit sellers, etc. The second floor has a bunch of very good prepared food stalls.'},
+      {name:'Osteria Santo Spirito',type:'restaurant',lat:43.76652,lng:11.246794,free:false,desc:'This is a great little neighborhood osteria. It\'s well known simply for have fantastic food. Make a reservation as it is very popular. It opens at 7pm and people, even those with reservations, start lining up about 6:30pm.'},
+      {name:'Vini E Vecchi Sapori',type:'restaurant',lat:43.77013,lng:11.256697,free:false,desc:'Tiny restaurant that does only traditional foods. Specialities include papardelle in duck ragu and ribollita.'},
+      {name:'Vecchi',type:'restaurant',lat:43.768462,lng:11.249828,free:false,desc:'Vecchi is a chocolatier, but they also run gelaterias. While they have one right in the center of the city, this location is calmer and allows you to get a gelato and take in a beautiful view of Florence from the bridge.'},
+      {name:'Kitsch 2',type:'restaurant',lat:43.778569,lng:11.257427,free:false,desc:'Apericena is a Florentine specialty. Normally, with an aperitivo you would get an asortment of snacks. With apericena you can order a drink and get an entire meal. Kitsch 2 is known for having one of the best in the city.'},
+      {name:'Biscottificio Di Migliana Srl',type:'restaurant',lat:43.933368,lng:10.923104,free:false,desc:'The best cantucci in Tuscany. The chocolate with white chocolate chunks are delicious, but they\'re all good. Eat with some vin santo. Importantly, this bakery is not particularly easy to get to.'},
+      {name:'Trattoria Sostanza',type:'restaurant',lat:43.772672,lng:11.247018,free:false,desc:'This is considered one of the best traditional trattorias in Florence. The recipes are nearly unchanged since the mid-1800s. The butter chicken is a signature dish.'},
+      {name:'Osteria del Cinghiale Bianco',type:'restaurant',lat:43.767897,lng:11.250542,free:false,desc:'This is the type of place you want to go for delicious and traditional Tuscan meals. If it is Tuscan you can get it here, and it will be fantastic. It has more tourists in it earlier in the evening.'},
+      {name:'Forno Ghibellina',type:'restaurant',lat:43.769344,lng:11.265332,free:false,desc:'It\'s a bit of a hike from the city center, but this is one of the best pastry shops in Florence. Everything is delicious, and if you like pistachio, you will certainly be pleased. If there is one caffe to visit for breakfast, it is this one.'},
+      {name:'Ristorante Alla Vecchia Bettola Firenze',type:'restaurant',lat:43.766887,lng:11.240087,free:false,desc:'Despite being a little bit more difficult to get to, the penne alla vodka is apparently worth the hike.'},
+      {name:'I Dolci Di Patrizio Cosi',type:'restaurant',lat:43.771351,lng:11.261926,free:false,desc:'Getting to the edge of the tourist center, this caffe has fantastic pastries and good coffee. In particular their chocolate cornetto is overflowing and a hit with children.'},
+      {name:'Sophia Loren Restaurant Firenze',type:'restaurant',lat:43.772654,lng:11.253506,free:false,desc:'This might seem like an odd location, given how central it is in the city. But this is very good pizza, at a reasonable price, and is not inundated with tourists (possibly because they all thing it will be too touristy).'},
+      {name:'Mercato di Sant’Ambrogio',type:'restaurant',lat:43.770496,lng:11.266915,free:false,desc:'This is the second market in Florence. It is much calmer, and off the beaten path. Try Panini e Semel for some Tuscan street food.'},
+      {name:'Buca dell\'Orafo',type:'restaurant',lat:43.768454,lng:11.253986,free:true,desc:'This is a very traditional trattoria. It\'s a bit rough around the edges and bit more expensive than you would normally pay for traditional food, but it\'s good.'},
+      {name:'Pasticceria Nencioni',type:'restaurant',lat:43.771533,lng:11.2656,free:false,desc:'It might be loud and chaotic, but it\'s some of the best pastries in Florence.'},
+      {name:'Enoteca Spontanea',type:'restaurant',lat:43.76555,lng:11.248316,free:true,desc:'Yes, it\'s a wine bar that focuses on spontaneously fermented wines, but after 7:30 it becomes an intimate restaurant with fantastic food. Run by a brother and sister team, all the food is fantastic, but the chocolate cake is to die for.'},
+      {name:'Piazza Fra\' Girolamo Savonarola',type:'bar',lat:43.78162,lng:11.266492,free:false,desc:'Just outside the historic center, this square is not the most beautiful, but it is full of locals living their lives - kids playing soccer and riding scooters, people walking their pets, and locals sitting on a bench enjoying an aperitivo from a  hut that sells cheap Aperol Spritzes. The hut is only open in the warmer months, so if you\'re there before late-March, you might be out of luck.'},
+      {name:'Grand Hotel Minerva',type:'bar',lat:43.773905,lng:11.249034,free:false,desc:'The bar on the roof of this hotel is incredible, and it is also where the Negroni was invented.'},
+      {name:'Ristorante Il Vescovino',type:'bar',lat:43.5475,lng:11.310556,free:false,desc:'The view is incredible. Sit in the naturally shaded terrace and have a glass of wine.'},
+      {name:'Oblate Library',type:'bar',lat:43.772316,lng:11.259964,free:false,desc:'This is a library. It is an old library. Go to the top floor and there is a caffe with aperitivo with the most spectacular view you\'ll ever see. It will also feel like you\'re not in the right place. You are, just ask for direction to the caffe.'},
+      {name:'Le Volpi e l\'Uva',type:'bar',lat:43.766999,lng:11.252828,free:true,desc:'This is a wine bar with a huge selection of Tuscan wines. They will even bring you on a Tuscan wine flight. It can, however, get crowded, like everything in Florence, so be prepared to wait a bit.'},
+      {name:'Le Murate - Caffe Lettterario',type:'bar',lat:43.769296,lng:11.267891,free:false,desc:'A very nice place for aperitivo, but it\'s really apericena, where the food you get with the purchase of a cocktail might as well be dinner. Not as robust an apera-cena as Kitsch 2, but quite good, and it\'s in an old prison, which is cool.'},
+      {name:'Santarosa Bistrot',type:'bar',lat:43.771635,lng:11.240409,free:false,desc:'Definitely away from the touristy crowds, this is a great spot for an evening drink, particularly in the summer months when you can sit outside in their garden.'}
+    ]
+  },
+  amsterdam: {
+    title:'Amsterdam & Brussels', center:[52.370, 4.895], zoom:13, total:50,
+    stripeUrl:'https://buy.stripe.com/aFa4gz9tE1CP5VablBenS0a',
+    places:[
+      {name:'\'t Smalle',type:'bar',lat:52.3767128,lng:4.8841696,free:true,desc:'This is an old brown bar in a pretty two-story building. It has beautiful views of Egelantiersgracht.'},
+      {name:'cafe twee prinsen',type:'bar',lat:52.3779216,lng:4.8864545,free:false,desc:'Another brown bar. Very pretty interior. Extremely laid back and pleasant. You get free snacks!'},
+      {name:'Café Chris',type:'bar',lat:52.3742752,lng:4.8816114,free:false,desc:'This is one of the oldest cafes in Amsterdam, dating from 1624. It is frequented by locals, and has absolutely NO pretense. It is cash-only.'},
+      {name:'Tolbar',type:'bar',lat:52.3527291,lng:4.9066757,free:false,desc:'This is one of the best terraces in Amsterdam. They have beach chairs and on a sunny day, it is perfect for grabbing a drink and soaking up the rare Dutch sun.'},
+      {name:'Café \'t Hooischip',type:'bar',lat:52.3665131,lng:4.9017508,free:false,desc:'This is a more touristy area, but this is a local cafe that doesn\'t get frequented by tourists. They have a good beer selection, and serve beer from Brouwerij \'t IJ, which is the lesser known Amsterdam brewery.'},
+      {name:'Eetcafé \'t Pakhuis',type:'bar',lat:52.3682008,lng:4.8906417,free:false,desc:'This is on a tiny street away from everything. Think dark woods on the inside with good traditional food and beers. There is also a bar cat, so that\'s a win.'},
+      {name:'\'t Aepjen',type:'bar',lat:52.3762704,lng:4.9001675,free:false,desc:'This is a super old bar. It used to be frequented by sailors in the 17th and 18th centuries. Its is extremely traditional. Some sailors would even drink so much that they’d lose their money and be forced to sell their pet monkeys to the bar (who lived upstairs) as payment for their drinks.  Eventually, there were too many monkeys, which is how the Amsterdam Zoo began.'},
+      {name:'Café ‘t Sluisje',type:'bar',lat:52.3912275,lng:4.9382328,free:false,desc:'This is a bar in a building dating from the mid-1500s. It is about as far from feeling like you\'re in Amsterdam as possible.'},
+      {name:'Cafe Tabac',type:'bar',lat:52.3801768,lng:4.8885231,free:false,desc:'A traditional bruin cafe, but it has really nice outdoor areas, which are perfect for a sunny day and provides for nice views.'},
+      {name:'Tales & Spirits',type:'bar',lat:52.3761301,lng:4.8917236,free:false,desc:'This is a cool cocktail bar, with a real mixologist and nice bar snacks.'},
+      {name:'Café Panache',type:'bar',lat:52.3656699,lng:4.8678817,free:false,desc:'This is a pretty nice cocktail bar. Its is chic, but laid back. They also have a very good seafood platter.'},
+      {name:'Waterkant',type:'restaurant',lat:52.3698158,lng:4.8763487,free:false,desc:'Surinamese food with a good beer selection and beautiful views, especially on a sunny day (which are few and far between).'},
+      {name:'Het Zaanse Pannenkoeken Paleis',type:'restaurant',lat:52.4392056,lng:4.8265077,free:false,desc:'This is a pancake restaurant known for having fantastic views of the Zaan. You can watch the ships come and go while enjoying the hell out of some delicious Dutch savory pancakes.'},
+      {name:'De Carrousel Pannenkoeken Amsterdam',type:'restaurant',lat:52.3589597,lng:4.8917027,free:false,desc:'This is on the location of an old carousel, thus the name. The pancakes are supposed to be the best in Amsterdam.'},
+      {name:'Pannenkoekenboot Amsterdam',type:'restaurant',lat:52.4004825,lng:4.8915332,free:false,desc:'This combines two very Dutch things, pancakes and boats. It is a 75 minute ride through the canals while you eat pancakes.'},
+      {name:'Sampurna',type:'restaurant',lat:52.3668248,lng:4.8901912,free:false,desc:'A very good Indonesian restaurant. Pop in for a rijstafel, It is known for it\'s HOT sambal.'},
+      {name:'Les Brasseries Georges',type:'restaurant',lat:50.8116725,lng:4.3681411,free:false,desc:'This is one of the best places to go for french fries in Brussels. It has a selection of oils you can have your potatoes fried in.'},
+      {name:'Pancakehouse Upstairs',type:'restaurant',lat:52.369285,lng:4.893423,free:true,desc:'Pancakes in the smallest restaurant in Europe. It\'s only 4 tables, accessed via a very narrow staircase that is typical of Amsterdam canal houses. Worth it.'},
+      {name:'Pension Homeland',type:'restaurant',lat:52.3730206,lng:4.9167427,free:false,desc:'This is a brewery and restaurant all inside a small boutique hotel. On a nice day, you can sit right by the water and enjoy your drink/food.'},
+      {name:'Eiburgh Snacks',type:'restaurant',lat:52.3708538,lng:4.9630339,free:false,desc:'Come here for french fries. They\'re the best in the city, hands down. Importantly, it is in an old shipping container. In the container next door  you\'ll find an old man jamming out while cutting potatoes.'},
+      {name:'Pompet',type:'restaurant',lat:52.3950808,lng:4.9205137,free:false,desc:'This is a French oriented restaurant, but it is a beautiful setting. There is space to place boule (it\'s like bocce, but more French).'},
+      {name:'Paon Bali',type:'restaurant',lat:52.3769385,lng:4.9433835,free:false,desc:'This is considered by many Indonesian people to be the best Indonesian food in Amsterdam. It\'s inexpensive, authentic, large portions.'},
+      {name:'Braai Vondelpark',type:'restaurant',lat:52.3561985,lng:4.8544504,free:false,desc:'This is South African BBQ. This pork belly, sausage, ribs, all the things Afrikaaners do. There might be a wait, but it\'s worth it. Get your food and sit out along the canal if it\'s sunny.'},
+      {name:'The Papeneiland Café',type:'restaurant',lat:52.3804758,lng:4.8880228,free:false,desc:'This is where you go for Dutch pie (vlaai). There is also a tunnel that Catholics used to use to go to a secret church when Catholicism was outlawed.'},
+      {name:'Haring & Zo',type:'restaurant',lat:52.3730108,lng:4.8902535,free:true,desc:'This is one of the few cured herring stalls left in the city. It is about as authentic Dutch as you can get.'},
+      {name:'Patisserie Kuyt V.O.F.',type:'restaurant',lat:52.3624534,lng:4.8989267,free:false,desc:'This is the best patisserie in Amsterdam. I\'m partial to always having vlaai in the Netherlands, but try the appelschnitt (it\'s raisins, cinnamon, and apples in a puff pastry).'},
+      {name:'De Kas',type:'restaurant',lat:52.3522063,lng:4.9302736,free:false,desc:'This is a very chic restaurant. It\'s inside a greenhouse dating from the early 20th century. It\'s prix fixe, farm to table. Bring your wallet!'},
+      {name:'Hollands Hap Hmm Restaurant',type:'restaurant',lat:52.3636729,lng:4.876325,free:false,desc:'Quintessential Dutch food since the 1930s. Schnitzel and meatballs for small prices but big portions.'},
+      {name:'Wilde Zwijnen',type:'restaurant',lat:52.3635846,lng:4.9404468,free:false,desc:'This is a high-end restaurant that has specialized in game, particularly wild boar. It is a 3-4 course menu with a good wine selection.'},
+      {name:'Pesca Vis Seafood Restaurant Amsterdam',type:'restaurant',lat:52.372763,lng:4.8788041,free:false,desc:'So, this is gonna be weird, but it\'s fish theater. They give you a glass of champagne, and then you pick the fish you want to eat, literally. They show it to you on ice, you pick it, and then they prepare it for you.'},
+      {name:'Brouwerij \'t IJ',type:'site',lat:52.3666901,lng:4.9264241,free:false,desc:'Forego Heineken and come to this brewery. They make extremely good beer, and they\'re next to a giant old windmill. They also do tastings.'},
+      {name:'Rijksmuseum',type:'site',lat:52.3599976,lng:4.8852188,free:true,desc:'This is THE museum in Amsterdam. Think Dutch masters like Reubens and Rembrandt. A must visit in the city. Also, go to the Cuypers Library. Yeah, it\'s a library, but it\'s more than a library. This is an art history library, and MY GOD, you have to see it.'},
+      {name:'Van Gogh Museum',type:'site',lat:52.3584159,lng:4.8810756,free:false,desc:'This is probably one of the coolest museums in the world. It is the largest collection of Van Goghs in one place, but the layout is fantastic too. It\'s all devised to be chronological walk through Van Gogh\'s work. Get tickets in advance.'},
+      {name:'Anne Frank House',type:'site',lat:52.3752182,lng:4.8839765,free:false,desc:'Very little needs to be said about this site. It is the house that Anne Frank hid in during WWII. It is somber, but should be seen.'},
+      {name:'Heineken Experience',type:'site',lat:52.3578313,lng:4.8918249,free:false,desc:'It\'s the Heineken brewery. There\'s a tour, and probably some beer to drink too.'},
+      {name:'Red Light District Amsterdam Centrum',type:'site',lat:52.3740194,lng:4.8999505,free:false,desc:'A unique and historic neighborhood with its own culture and energy quite separate from its reputation. Worth walking through to get a sense of a side of Amsterdam that most cities don\'t have.'},
+      {name:'Eye Film Museum',type:'site',lat:52.384348,lng:4.901276,free:false,desc:'This is a cool modernist building that houses a cool museum to film and cinema. It\'s a free ferry ride across the IJ.'},
+      {name:'Rembrandt House Museum',type:'site',lat:52.369369,lng:4.9012351,free:false,desc:'This is Rembrandt\'s old studio and his living area, which he stayed in for almost 20 years in the 17th century.'},
+      {name:'Hortus Botanicus Amsterdam',type:'site',lat:52.3666659,lng:4.9081845,free:false,desc:'One of the oldest botanical garden in Europe. Think old 1800s greenhouses, some filled with tropical plants. There\'s even a colonial seed house.'},
+      {name:'ARTIS',type:'site',lat:52.3660003,lng:4.9165321,free:false,desc:'This is the Amsterdam Zoo. It has all those monkeys people used to buy beer.'},
+      {name:'Vondelpark',type:'site',lat:52.3579946,lng:4.8686484,free:false,desc:'This is Amsterdam\'s answer to Central Park. It\'s good for strolling, picnicking, and anything else you would do in a park. There are sculptures throughout, even one by Picasso.'},
+      {name:'House of Bols, the Cocktail & Genever Experience',type:'site',lat:52.3591201,lng:4.8812169,free:false,desc:'Wasn\'t sure whether this was a tourist site or a bar. This is a museum dedicated to Dutch gin. The tour ends with a cocktail in the bar.'},
+      {name:'Stromma - Keizersgracht',type:'site',lat:52.3654522,lng:4.8867961,free:false,desc:'You can rent a paddleboat and tour the canals from here. A lovely way to see the city from the water. The canals carry active boat traffic, so stay alert and follow the instructions given by your rental operator'},
+      {name:'Nieuwe Spiegelstraat',type:'site',lat:52.3641147,lng:4.8892946,free:false,desc:'This is a weird little street with antique shops, all dedicated to different things. It\'s worth just popping in to see what weird stuff is for sale.'},
+      {name:'Bloemenmarkt',type:'site',lat:52.3668379,lng:4.8913087,free:false,desc:'This is the Amsterdam flower market. It is the only floating flower market in the world, and is 100% worth visiting given the fact that the Dutch do flowers right.'},
+      {name:'Oudemanhuispoort',type:'site',lat:52.3692781,lng:4.8960005,free:false,desc:'This is an old print, book and sheet music market. It\'s like stepping into the past. Rumor has it that Van Gogh frequented this market.'},
+      {name:'A\'DAM Lookout',type:'site',lat:52.383863,lng:4.902355,free:false,desc:'If you want a view of Amsterdam, this is it. It\'s on the 22nd story of a building that was once the HQ for Dutch Royal Shell. There is also Europe\'s highest swing up here.'},
+      {name:'Ons\' Lieve Heer op Solder (Our Lord in the Attic Museum - Former Hidden Catholic Church)',type:'site',lat:52.3751438,lng:4.8994358,free:true,desc:'Catholicism was outlawed in the 16th and 17th centuries. Catholics tried to worship in places where they wouldn\'t get caught. In the attic of this house is a tiny little Catholic Church. All decked out trying to be a Cathedral.'},
+      {name:'Keukenhof',type:'site',lat:52.2697087,lng:4.5469336,free:false,desc:'Technically not in Amsterdam, but worth the visit out of town. This is one of the most exquisite floral gardens you will ever visit. You can get to Lisse by train. It\'s not far; the Netherlands is small.'},
+      {name:'Kröller-Müller Museum',type:'site',lat:52.0955802,lng:5.8174162,free:false,desc:'Another one technically not in Amsterdam, but worth leaving the city for. This is a museum that was once a private collection of art. If you want to see Van Gogh, you have to come here. Some of his most famous pieces, like Cafe Terrace at Night.'}
+    ]
+  },
+  london: {
+    title:'London, UK', center:[51.505, -0.118], zoom:12, total:78,
+    stripeUrl:'https://buy.stripe.com/4gMdR99tE4P14R6fBRenS08',
+    places:[
+      {name:'Westminster Abbey',type:'site',lat:51.499292,lng:-0.12731,free:true,desc:'The oldest cathedral in London. Royal weddings happen here. It also has Poets\' Corner, which is the burial place for dozens of super famous people from Lord Byron to Isaac Newton.'},
+      {name:'Tower of London',type:'site',lat:51.508112,lng:-0.075949,free:true,desc:'This is the first castle build by William the Conqueror after taking Britain. Full of history, it is also where the British Crown Jewels are held, which are truly a sight to behold..'},
+      {name:'St. Paul\'s Cathedral',type:'site',lat:51.513845,lng:-0.098351,free:false,desc:'This is a beautiful Anglican cathedral designed by renowned London architect Sir Christopher Wren and built between 1645 and 1710. It is one of the most beautiful churches in all of Britain. The dome can be visited. It involves a significant climb of around 530 steps.'},
+      {name:'Big Ben',type:'site',lat:51.500729,lng:-0.124625,free:false,desc:'This is the most famous clock in the world. It is a sight to see, and more importantly, hear. Try and be here on the hour to hear the enormous bells rings. It is also possible to do tours inside Elizabeth Tower.'},
+      {name:'The British Museum',type:'site',lat:51.519413,lng:-0.126957,free:false,desc:'This is one of the most incredible history and anthropology museums in the world, despite the controversies surrounding it. It holds the Rosetta Stone, the frieze from the Parthenon, and a huge Egyptology section.'},
+      {name:'Speakers\' Corner',type:'site',lat:51.511894,lng:-0.159366,free:false,desc:'This is the spot that people were allowed to gather and say anything they pleased, including being critical of the royals. Today, you\'ll often still find people standing here making their pleas and arguments.'},
+      {name:'Palace of Westminster',type:'site',lat:51.499479,lng:-0.124809,free:false,desc:'This is the home of the British Parliament. It is a beautiful building, and the tour is 100% worth it.'},
+      {name:'Buckingham Palace',type:'site',lat:51.501364,lng:-0.14189,free:false,desc:'This is the King\'s residence in London. They usually do the changing of the guard here at 11am, which is filled with all the normal royal pomp.. It fills up quickly, so it\'s usually a good idea to get there early. Also, make sure it is happening that day before you go because it isn\'t every day..'},
+      {name:'St Dunstan in the East Church Garden',type:'site',lat:51.509715,lng:-0.08246,free:false,desc:'This is the remnants of a church built in the 12th century that was bombed in WWII. The ruins are now engulfed by trees and vines. Worth a stop if you\'re near the Tower of London.'},
+      {name:'Harrods',type:'site',lat:51.499406,lng:-0.163234,free:false,desc:'This is the biggest department store in London and it is worth going to see. The Egyptian Room is particularly impressive. Also, if you want to see how the 1% of London spend their money, this is where you go.'},
+      {name:'Warner Bros. Studio Tour London',type:'site',lat:51.689752,lng:-0.418146,free:false,desc:'If you\'re traveling with children, this is a great place. It is where Harry Potter was filmed, and you can go see all the sets.'},
+      {name:'Camden Market',type:'site',lat:51.541507,lng:-0.145719,free:false,desc:'The counter-culture commerce center of London. This is totally punk, with alternative and independent sellers.'},
+      {name:'Churchill War Rooms',type:'site',lat:51.502086,lng:-0.12873,free:false,desc:'This was the bunker that Churchill used during WWII. Much of the British decision making in the war happened in these bunkers. It is now a pretty cool museum that is designed to look like it did during the war.'},
+      {name:'Little Venice',type:'site',lat:51.523484,lng:-0.183885,free:false,desc:'This is a gorgeous area of tree lined canals, with colorful boats and tearooms and cafes. Worth walking through on a nice day.'},
+      {name:'Neal\'s Yard',type:'site',lat:51.514472,lng:-0.126353,free:false,desc:'This is a pretty alley that is full of colorful buildings, shops, and cafes.'},
+      {name:'Tate Modern',type:'site',lat:51.507595,lng:-0.099356,free:false,desc:'This is the main modern art museum in London, many would argue the best art museum in Britain. If you enjoy modern art, it is worth a visit.'},
+      {name:'Shakespeare\'s Globe',type:'site',lat:51.508076,lng:-0.097194,free:false,desc:'This is a bit of a tourist trap, but it is a perfect recreation of Shakespeare\'s Globe Theater. The original Globe is a few blocks to the east. They still perform Shakespeare\'s plays here.'},
+      {name:'The Sherlock Holmes Museum',type:'site',lat:51.523767,lng:-0.158556,free:false,desc:'There is no 221B Baker Street doesn\'t exist, but this is as close as you can get. It\'s a cool little museum dedicated to the grandfather of all literary detectives.'},
+      {name:'The Churchill Arms, Kensington',type:'site',lat:51.506912,lng:-0.194801,free:false,desc:'This is a pub, but it is famous for it\'s beautiful flowers and decorations. Obviously, this is seasonal, if you\'re in London in spring, it\'s worth seeing and then popping in for a drink.'},
+      {name:'10 Downing St',type:'site',lat:51.5034,lng:-0.127726,free:false,desc:'This is the home of the Prime Minister. You can\'t really visit here for security reasons, but it is worth walking past and looking down the street. 7-10 Adam St. is a near replica of 10 Downing, and you can take a photo in front of it.'},
+      {name:'Queen\'s House - The Tulip Stairs',type:'site',lat:51.481107,lng:-0.003701,free:false,desc:'This is an historic mansion, but inside is a super cool staircase called the Tulip Staircase. It is a circular staircase but is completely unsupported. Worth seeing if you\'re in Greenwich.'},
+      {name:'London Eye',type:'site',lat:51.50091,lng:-0.119532,free:false,desc:'This is an enormous ferris wheel on the southside of the Thames. It gives fantastic views, on a clear day, of the city as a whole.'},
+      {name:'Reckless Records',type:'site',lat:51.514312,lng:-0.135422,free:false,desc:'This is basically THE second-hand record shop in Soho.'},
+      {name:'TARDIS',type:'site',lat:51.492151,lng:-0.192964,free:false,desc:'A blue police box that travels through time and space, at least in the TV show Dr. Who.'},
+      {name:'Columbia Road Flower Market',type:'site',lat:51.529134,lng:-0.069826,free:false,desc:'This replaced the Covent Garden Flower Market, and operates from 8am-3pm most Sunday mornings (check to make sure it is open). It has tons of flower stalls, and buskers, and shops and cafes.'},
+      {name:'Brydges Place',type:'site',lat:51.509796,lng:-0.126131,free:false,desc:'The narrowest street in London. It is 15 inches at it\'s narrowest.'},
+      {name:'Tower Bridge',type:'site',lat:51.50516,lng:-0.075576,free:false,desc:'This is a stunningly beautiful bridge running across the Thames near the Tower of London. It is an iconic part of the London skyline.'},
+      {name:'The Postal Museum',type:'site',lat:51.524751,lng:-0.113926,free:false,desc:'This is a museum to the postal service. It\'s quite cool, but also you can ride the mail train that used to bring mail all over London.'},
+      {name:'Paved Court',type:'site',lat:51.460413,lng:-0.306514,free:false,desc:'This is the street that Ted Lasso lived on. It\'s as charming as it looked in the show.'},
+      {name:'Berwick Street',type:'site',lat:51.513765,lng:-0.135067,free:false,desc:'This is the street on the cover of Oasis\' (What\'s the Story) Morning Glory, but it is also famous for it\'s music shops, both instruments and records.'},
+      {name:'Abbey Road Studios',type:'site',lat:51.532075,lng:-0.178076,free:false,desc:'This is the world famous Beatles\' studio. While touring the studio is not usually allowed, you can use the zebra (crosswalk) right outside that was on the cover of the famous Beatles album. You can also mark up the famous graffiti wall.'},
+      {name:'Whitechapel',type:'site',lat:51.51482,lng:-0.065053,free:false,desc:'This is the Jack the Ripper neighborhood. They do a ton of walking tours in this area that are pretty cool.'},
+      {name:'Outernet London',type:'site',lat:51.515613,lng:-0.129926,free:false,desc:'This is an immersive art exhibit, and at least check free. Think being inside a computer animation. Don\'t go out of your way, but if you\'re walking by, stop in.'},
+      {name:'Leadenhall Market',type:'site',lat:51.512766,lng:-0.083529,free:false,desc:'This is an historic covered market, but it is absolutely beautiful. It was also one of the entrances to Diagon Alley.'},
+      {name:'Piccadilly Circus',type:'site',lat:51.510091,lng:-0.134568,free:false,desc:'This is like the Times Square of London. Crowded and loud, its worth a stop just because it has been such an important part of London history.'},
+      {name:'Royal Botanic Gardens',type:'site',lat:51.483711,lng:-0.289687,free:false,desc:'This garden has the largest and most diverse collection of living plants in the world. It\'s also a UNESCO World Heritage Site. The rest of Kew Gardens is also worth a walk around.'},
+      {name:'Primrose Hill',type:'site',lat:51.5395226,lng:-0.1606499,free:false,desc:'This is a great place to take in a view of the entirety of London. On a nice day, it\'s a great place for a picnic.'},
+      {name:'Trafalgar Square',type:'site',lat:51.508039,lng:-0.128069,free:false,desc:'This is a big public square commemorating the Battle of Trafalgar. In the middle is the Nelson Column. It is also an important place politically, as it has hosted multiple protests, including a riot over Bloody Sunday.'},
+      {name:'The Fryer\'s Delight',type:'restaurant',lat:51.520379,lng:-0.117311,free:true,desc:'This is one of the best fish and chips shops in London. If you\'re looking for a traditional chippy, this is as good an option as any.'},
+      {name:'Rules Restaurant',type:'restaurant',lat:51.510798,lng:-0.123163,free:true,desc:'This is one of the oldest, if not the oldest restaurants in London, and one of the most important. It shows up in literature, and was even frequented by Lawrence Olivier. It is classic British cuisine, but they specialize in game. Dress is smart casual, no kids after 7pm'},
+      {name:'Otto\'s French Restaurant London',type:'restaurant',lat:51.522919,lng:-0.114261,free:false,desc:'This is traditional French cooking, but much of the prep work is done table side with traditional tools.'},
+      {name:'Rochelle Canteen',type:'restaurant',lat:51.525782,lng:-0.074429,free:false,desc:'This is a restaurant in an old school cafeteria. The menu changes based on what is available. You will end up eating whatever the chef feels like cooking that day. If you want to go, best to make a reservation.'},
+      {name:'Preem Brick Lane',type:'restaurant',lat:51.520194,lng:-0.071732,free:false,desc:'This curry house has been around since 1963 for a reason. The food is simply good.. It has a little bit of everything.'},
+      {name:'Beigel Bake Brick Lane Bakery',type:'restaurant',lat:51.524498,lng:-0.071761,free:false,desc:'First bagel shop in London, established in 1855. It\'s not up to New York standards, but if you\'re in London and you need a bagel fix, it\'ll do.'},
+      {name:'Sheba Restaurant - Awarded Best Curry House In UK',type:'restaurant',lat:51.520662,lng:-0.071713,free:false,desc:'This is one of the older curry houses on Brick Lane. It\'s been around since 1974 and has won multiple awards. Call for reservations.'},
+      {name:'Addis',type:'restaurant',lat:51.532058,lng:-0.120393,free:false,desc:'This is very good Ethiopian that doesn\'t require you take a 30 minute tube ride to get to.'},
+      {name:'E Pellicci',type:'restaurant',lat:51.526508,lng:-0.063436,free:false,desc:'Traditional East End cafe. It\'s cockney and Italian, and known for its theatrical environment. The interior is also known for its art deco design. It is a true institution.'},
+      {name:'Sherlock Holmes',type:'restaurant',lat:51.507352,lng:-0.125216,free:false,desc:'This is a Sherlock Holmes themed pub with a roof garden. It\'s got pretty decent pub food and drinks.'},
+      {name:'Poppies Fish & Chips',type:'restaurant',lat:51.520204,lng:-0.074035,free:false,desc:'Classic fish and chips spot. They also do rotisserie chicken and for the adventurous, jellied eel.'},
+      {name:'Homeslice Neal\'s Yard',type:'restaurant',lat:51.514569,lng:-0.126433,free:false,desc:'This is very good thin crust pizza cooked in a wood-fired oven. If you just want good pizza, this is a top option.'},
+      {name:'Bleecker Victoria',type:'restaurant',lat:51.496506,lng:-0.144655,free:false,desc:'Started by a New Yorker who had moonlighted at a burger joint in Manhattan, many argue this is the best burger in London. At the very least, it is extremely good.'},
+      {name:'Lahore Kebab House',type:'restaurant',lat:51.514567,lng:-0.063138,free:false,desc:'One of the best punjabi restaurants in London. The lamb chops mixed with the chana dal is fantastic. Also, try the  karahi gosht.'},
+      {name:'The French House',type:'restaurant',lat:51.512747,lng:-0.131732,free:false,desc:'This is a classic pub, no TV, music or cell phones allowed in the pub. The restaurant is also very good.'},
+      {name:'ICCO - "The People\'s Pizzeria"',type:'restaurant',lat:51.519423,lng:-0.135958,free:false,desc:'A good and inexpensive pizza in the middle of London.'},
+      {name:'BAO Soho',type:'restaurant',lat:51.513216,lng:-0.136556,free:false,desc:'Fantastic dumplings, but you\'ll have to "queue" to get some.'},
+      {name:'Butchies Earl\'s Court',type:'restaurant',lat:51.492994,lng:-0.19356,free:false,desc:'American style buttermilk fried chicken sandwiches. Also, don’t miss the moreish chicken strips served with house OG sauce.'},
+      {name:'Baban\'s Naan',type:'restaurant',lat:51.563285,lng:-0.101879,free:false,desc:'This is a Kurdish tandoor and naan bakery. The baked goods are truly exceptional.'},
+      {name:'Toconoco',type:'restaurant',lat:51.53835,lng:-0.078303,free:false,desc:'This is a Japanese cafe that is kid friendly. It also sit next to a canal.'},
+      {name:'Cafe TPT',type:'restaurant',lat:51.51106,lng:-0.132024,free:false,desc:'A Cantonese restaurant.  The creamy and rich beef brisket curry on rice and Singapore noodles, elastic and smoky from the wok, are great options, but it’s the pork chop Macau-style with onions, cheesy bechamel and spoonfuls of chilli oil that is unmissable.'},
+      {name:'Bun House',type:'restaurant',lat:51.51365,lng:-0.130451,free:false,desc:'Good and cheap Cantonese food in a snug environment.'},
+      {name:'Dosa n Chutny',type:'restaurant',lat:51.427446,lng:-0.168899,free:false,desc:'This is a South Indian restaurant specializing in dosas, which are kind of like Indian pancakes.'},
+      {name:'Maison Bertaux',type:'restaurant',lat:51.513345,lng:-0.13021,free:false,desc:'The oldest patisserie in London. No, it\'s not Paris, but it is still very good.'},
+      {name:'Kennedy\'s Barbican',type:'restaurant',lat:51.523605,lng:-0.093444,free:false,desc:'Fish and chips. About as perfect an example of a chip shop. You don\'t eat in, you get greasy fish in newspaper.'},
+      {name:'Jumi Cheese',type:'restaurant',lat:51.505501,lng:-0.090823,free:false,desc:'This is one of the best cheese shops in London. It is most famous for Blue Brain, which is a cheese covered in a blue mold that makes it look like a little brain. But don\'t go here looking for a meal, it\'s truly just a shop.'},
+      {name:'Sir Colin Campbell',type:'bar',lat:51.543457,lng:-0.199603,free:false,desc:'This is an Irish pub that dates back to the 19th century and is in a formerly super-Irish neighborhood. It\'s still a seriously Irish pub keeping it real with traditional Irish music on the weekend.'},
+      {name:'Bradley\'s Spanish Bar',type:'bar',lat:51.516514,lng:-0.132717,free:false,desc:'Definitely a dive, with a less than refined interior and a focus on music. It\'s a British joint with a vaguely Spanish feel, but you can get sangria.'},
+      {name:'Gordon\'s Wine Bar',type:'bar',lat:51.507944,lng:-0.123314,free:true,desc:'London\'s oldest wine bar, it is warm and inviting with candlelit cellars and a large global wine list.'},
+      {name:'The Porterhouse',type:'bar',lat:51.510421,lng:-0.123599,free:false,desc:'If you\'re looking for a quiet pub to relax, this isn\'t it. It is a massive pub serving tons of beers, stouts and ales. It is, in essence, a labyrinth.'},
+      {name:'The Royal Oak',type:'bar',lat:51.500128,lng:-0.091427,free:false,desc:'This is a very charming Victorian pub that specializes in, as you might expect, cask ales.'},
+      {name:'The Duke Of Sussex',type:'bar',lat:51.501134,lng:-0.11005,free:false,desc:'This is a gastropub that has some nice outdoor seating and good drinks.'},
+      {name:'The Harp, Covent Garden',type:'bar',lat:51.509719,lng:-0.125943,free:false,desc:'Beautiful old pub with stained glass windows and hand pumped ales.'},
+      {name:'Cafe Kick',type:'bar',lat:51.52604,lng:-0.109071,free:false,desc:'This is best described as a soccer bar. Play some foosball, watch some soccer, have some drinks, and eat some pretty good bar food.'},
+      {name:'Ye Olde Cheshire Cheese',type:'bar',lat:51.514368,lng:-0.10717,free:false,desc:'Oldest pub in London. It can be a bit touristy, but it\'s a good drink and decent pub food.'},
+      {name:'Ye Olde Mitre',type:'bar',lat:51.518398,lng:-0.107389,free:false,desc:'Super old pub untouched by modernity. If you\'re looking for old London charm, you can\'t get more authentic than this.'},
+      {name:'Nightjar',type:'bar',lat:51.526529,lng:-0.087776,free:false,desc:'This is a speakeasy with live jazz, R&B, etc., The drinks are some of the most gorgeous you\'ll ever see.'},
+      {name:'The Lyric',type:'bar',lat:51.511302,lng:-0.134389,free:false,desc:'Victoria pub with wood paneling, fire places, and a cozy atmosphere. They also have food.'},
+      {name:'The Prince\'s Head, Richmond',type:'bar',lat:51.460446,lng:-0.306394,free:false,desc:'This is Ted Lasso\'s pub, so you had better be an AFC Richmond fan.'},
+      {name:'Southampton Arms',type:'bar',lat:51.556068,lng:-0.146183,free:false,desc:'This pub has one of the best bar menus in London.'}
+    ]
+  }
+};
+var _urlMap=(new URLSearchParams(window.location.search)).get('map');var currentMap=(_urlMap&&['hawaii','paris','florence','rome','amsterdam','london'].indexOf(_urlMap)>=0)?_urlMap:'rome', currentFilter='all', leafletMap=null, markers=[], currentPurchaseMap='rome';
+
+function typeColor(t){return t==='restaurant'?'#e05a2b':t==='bar'?'#6a3fd4':'#1a8c5e';}
+function typeLabel(t){return t==='restaurant'?'Restaurant':t==='bar'?'Bar':'Site';}
+
+function initMap(){
+  leafletMap=L.map('map',{zoomControl:true});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+    attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>',
+    subdomains:'abcd',maxZoom:19
+  }).addTo(leafletMap);
+  loadMapData(currentMap);
+}
+
+function loadMapData(mapKey){
+  currentMap=mapKey;
+  var md=MAPS[mapKey];
+  document.getElementById('tabRome').classList.toggle('active',mapKey==='rome');
+  document.getElementById('tabHawaii').classList.toggle('active',mapKey==='hawaii');
+  document.getElementById('tabParis').classList.toggle('active',mapKey==='paris');
+  document.getElementById('tabFlorence').classList.toggle('active',mapKey==='florence');
+  document.getElementById('tabAmsterdam').classList.toggle('active',mapKey==='amsterdam');
+  document.getElementById('tabLondon').classList.toggle('active',mapKey==='london');
+  document.getElementById('tabBuenosaires').classList.toggle('active',mapKey==='buenosaires');
+  document.getElementById('sidebarTitle').textContent=md.title;
+  document.getElementById('totalCount').textContent=md.total;
+  var free=md.places.filter(function(p){return p.free;}).length;
+  document.getElementById('sidebarSub').textContent=free+' of '+md.total+' places — free preview';
+  leafletMap.setView(md.center,md.zoom);
+  markers.forEach(function(m){leafletMap.removeLayer(m);});
+  markers=[];
+  md.places.forEach(function(place){
+    if(currentFilter!=='all'&&place.type!==currentFilter)return;
+    var color=place.free?typeColor(place.type):'#666';
+    var size=place.free?13:8;
+    var icon=L.divIcon({
+      html:'<div style="width:'+size+'px;height:'+size+'px;background:'+color+';border-radius:50%;border:2px solid rgba(255,255,255,'+(place.free?.4:.15)+');box-shadow:0 2px 6px rgba(0,0,0,.45);"></div>',
+      className:'',iconSize:[size,size],iconAnchor:[size/2,size/2]
+    });
+    var marker=L.marker([place.lat,place.lng],{icon:icon});
+    var displayName = place.free ? place.name : 'Locked Location';
+    var displayType = place.free ? typeColor(place.type) : '#666';
+    var pop='<div class="popup-inner"><div class="popup-type" style="color:'+displayType+'">'+(place.free ? typeLabel(place.type) : 'Purchase to unlock')+'</div><div class="popup-name">'+displayName+'</div>';
+    if(place.free){pop+='<div class="popup-desc">'+place.desc+'</div>';}
+    else{pop+='<div class="popup-locked">Purchase the full map to discover this location.</div><button class="popup-unlock-btn" onclick="showPurchase()">Unlock Full Map — $2.99</button>';}
+    pop+='</div>';
+    marker.bindPopup(pop,{maxWidth:270});
+    marker.addTo(leafletMap);
+    markers.push(marker);
+  });
+  renderList();
+}
+
+function renderList(){
+  var list=document.getElementById('placesList');
+  list.innerHTML='';
+  var md=MAPS[currentMap];
+  var sortedPlaces=md.places.slice().sort(function(a,b){return (b.free?1:0)-(a.free?1:0);});
+  sortedPlaces.forEach(function(place){
+    if(currentFilter!=='all'&&place.type!==currentFilter)return;
+    var item=document.createElement('div');
+    item.className='place-item'+(place.free?'':' locked');
+    item.innerHTML='<div class="place-dot" style="background:'+typeColor(place.type)+'"></div><div class="place-name">'+place.name+'</div><div class="place-type-lbl" style="color:'+typeColor(place.type)+'">'+typeLabel(place.type)+'</div>';
+    if(place.free){
+      item.addEventListener('click',function(){
+        leafletMap.setView([place.lat,place.lng],16);
+        markers.forEach(function(m){var ll=m.getLatLng();if(Math.abs(ll.lat-place.lat)<.0001&&Math.abs(ll.lng-place.lng)<.0001)m.openPopup();});
+        document.getElementById('sidebar').classList.remove('open');
+      });
+    } else {
+      // Replace name with locked placeholder
+      item.querySelector('.place-name').textContent = '🔒 Locked Location';
+      item.querySelector('.place-type-lbl').textContent = 'Purchase to unlock';
+      item.querySelector('.place-type-lbl').style.color = 'rgba(242,236,224,0.2)';
+    }
+    list.appendChild(item);
+  });
+}
+
+function switchMap(k){currentFilter='all';document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active');});document.querySelector('.filter-btn.f-all').classList.add('active');loadMapData(k);}
+function setFilter(type,btn){currentFilter=type;document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');loadMapData(currentMap);}
+function toggleSidebar(){
+  var sb = document.getElementById('sidebar');
+  var btn = document.querySelector('.sidebar-toggle');
+  var legend = document.querySelector('.map-legend');
+  var floatBtn = document.getElementById('mobileUnlockBtn');
+  var sidebarBtn = document.getElementById('sidebarUnlockBtn');
+  sb.classList.toggle('open');
+  if(sb.classList.contains('open')){
+    btn.style.left = '348px';
+    btn.textContent = '✕ Close';
+    if(legend) legend.style.display = 'none';
+    if(floatBtn) { floatBtn.style.setProperty('display','none','important'); }
+    if(sidebarBtn) sidebarBtn.style.display = 'block';
+  } else {
+    btn.style.left = '0';
+    btn.textContent = '☰ Places';
+    if(legend) legend.style.display = '';
+    if(floatBtn) { floatBtn.style.removeProperty('display'); }
+    if(sidebarBtn) sidebarBtn.style.display = 'none';
+  }
+}
+
+function openPurchase(){
+  currentPurchaseMap=currentMap;
+  document.getElementById('purchaseTitle').textContent=MAPS[currentMap].title+' — Full Map';
+  document.getElementById('buyName').value='';
+  document.getElementById('buyEmail').value='';
+  document.getElementById('buyAgree').checked=false;
+  toggleBuyBtn();
+  document.getElementById('purchaseModal').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closePurchase(){document.getElementById('purchaseModal').classList.remove('open');document.body.style.overflow='';}
+function toggleBuyBtn(){var c=document.getElementById('buyAgree').checked,btn=document.getElementById('buyBtn');btn.classList.toggle('enabled',c);}
+
+function completePurchase(){
+  var name=document.getElementById('buyName').value.trim();
+  var email=document.getElementById('buyEmail').value.trim();
+  if(!name){alert('Please enter your full name.');return;}
+  if(!email||email.indexOf('@')<1){alert('Please enter a valid email address.');return;}
+  if(!document.getElementById('buyAgree').checked){alert('Please agree to the terms.');return;}
+  var btn=document.getElementById('buyBtn');
+  btn.textContent='Please wait...';btn.classList.remove('enabled');
+  var stripeUrl=MAPS[currentPurchaseMap].stripeUrl;
+  var mapName=MAPS[currentPurchaseMap].title;
+  var done=false;
+  function go(){if(done)return;done=true;closePurchase();window.open(stripeUrl,'_blank');}
+  setTimeout(go,2000);
+  var xhr=new XMLHttpRequest();
+  xhr.open('POST','https://formspree.io/f/xaqvrben',true);
+  xhr.setRequestHeader('Content-Type','application/json');
+  xhr.setRequestHeader('Accept','application/json');
+  xhr.onreadystatechange=function(){if(xhr.readyState===4)go();};
+  xhr.onerror=function(){go();};
+  xhr.send(JSON.stringify({full_name:name,email:email,agreed_to_terms:'Yes',map_purchased:mapName,timestamp:new Date().toLocaleString(),message:name+' ('+email+') agreed to Terms for '+mapName+' on '+new Date().toLocaleString()}));
+}
+
+document.getElementById('purchaseModal').addEventListener('click',function(e){if(e.target===this)closePurchase();});
+function showPurchase() {
+  currentPurchaseMap = currentMap;
+  var modal = document.getElementById('purchaseModal');
+  var title = document.getElementById('purchaseTitle');
+  if (title) title.textContent = MAPS[currentMap].title + ' — Full Map';
+  if (modal) { modal.classList.add('open'); document.body.style.overflow = 'hidden'; }
+}
+
+window.addEventListener('load', function() {
+  // Set back link based on return parameter
+  var params = new URLSearchParams(window.location.search);
+  var ret = params.get('return');
+  var backLink = document.getElementById('backLink');
+  if(ret && backLink){
+    if(ret === 'index'){
+      backLink.href = 'index.html';
+      backLink.textContent = '← Back to Maps';
+    } else {
+      backLink.href = ret + '.html';
+      backLink.textContent = '← Back';
+    }
+  }
+  initMap();
+  // Check if a specific map was requested via hash
+  // Map loaded directly from hash at init
+  if (currentMap === 'amsterdam') { /* already set */ }
+});
+</script>
+  <!-- MOBILE UNLOCK BUTTON -->
+  <button id="mobileUnlockBtn" onclick="showPurchase()" style="position:fixed;bottom:1.5rem;right:1rem;z-index:500;background:var(--gold);color:var(--ink);font-family:var(--font-sans);font-size:0.65rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:0.85rem 1.4rem;border:none;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.5);border-radius:2px;">🔓 Unlock Full Map — $2.99</button>
+
+</body>
+</html>
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+var currentUser = null;
+var activePurchases = []; // array of mapKey strings user has bought
+var currentMap = 'rome';
+var currentFilter = 'all';
+var leafletMap = null;
+var markers = [];
+var liveMarker = null;
+var accuracyCircle = null;
+var watchId = null;
+var hasZoomedToUser = false;
+var isSignUp = false;
+
+// ── AUTH ─────────────────────────────────────────────────────────────────────
+auth.onAuthStateChanged(async function(user) {
+  if (user) {
+    currentUser = user;
+    activePurchases = await getActivePurchases(user.uid);
+    showApp();
+  } else {
+    currentUser = null;
+    activePurchases = [];
+    showAuth();
+  }
+});
+
+function showAuth() {
+  document.getElementById('authScreen').classList.remove('hidden');
+  document.getElementById('mainApp').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('authScreen').classList.add('hidden');
+  var app = document.getElementById('mainApp');
+  app.style.display = 'flex';
+  if (!leafletMap) initMap();
+  buildTabs();
+  loadMap(currentMap);
+  renderShop();
+}
+
+function toggleAuthMode() {
+  isSignUp = !isSignUp;
+  document.getElementById('authTitle').textContent = isSignUp ? 'Create Account' : 'Sign In';
+  document.getElementById('authSubmitBtn').textContent = isSignUp ? 'Create Account' : 'Sign In';
+  document.getElementById('authSwitch').innerHTML = isSignUp
+    ? 'Already have an account? <a onclick="toggleAuthMode()">Sign in</a>'
+    : 'No account? <a onclick="toggleAuthMode()">Create one</a>';
+  document.getElementById('authError').textContent = '';
+}
+
+async function submitAuth() {
+  var email = document.getElementById('authEmail').value.trim();
+  var password = document.getElementById('authPassword').value;
+  var errEl = document.getElementById('authError');
+  errEl.textContent = '';
+  if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; return; }
+  try {
+    if (isSignUp) {
+      await auth.createUserWithEmailAndPassword(email, password);
+    } else {
+      await auth.signInWithEmailAndPassword(email, password);
+    }
+  } catch(e) {
+    errEl.textContent = e.message.replace('Firebase: ', '').replace(/\(auth.*\)\.?/, '').trim();
+  }
+}
+
+async function signInGoogle() {
+  var provider = new firebase.auth.GoogleAuthProvider();
+  try {
+    await auth.signInWithPopup(provider);
+  } catch(e) {
+    document.getElementById('authError').textContent = 'Google sign-in failed. Please try again.';
+  }
+}
+
+function signOut() {
+  auth.signOut();
+}
+
+// ── PURCHASE TRACKING ─────────────────────────────────────────────────────────
+async function getActivePurchases(userId) {
+  var now = firebase.firestore.Timestamp.now();
+  var snap = await db.collection('mapPurchases')
+    .where('userId', '==', userId)
+    .where('expiresAt', '>', now)
+    .get();
+  return snap.docs.map(function(d) { return d.data().mapKey; });
+}
+
+async function recordPurchase(userId, mapKey) {
+  var now = new Date();
+  var expiresAt = new Date(now);
+  expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+  await db.collection('mapPurchases').add({
+    userId: userId,
+    mapKey: mapKey,
+    mapName: MAPS[mapKey] ? MAPS[mapKey].title : mapKey,
+    purchasedAt: firebase.firestore.Timestamp.fromDate(now),
+    expiresAt: firebase.firestore.Timestamp.fromDate(expiresAt),
+    active: true
+  });
+}
+
+function hasAccess(mapKey) {
+  return activePurchases.includes(mapKey);
+}
+
+// ── MAP INIT ─────────────────────────────────────────────────────────────────
+function initMap() {
+  leafletMap = L.map('map', { zoomControl: true });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    subdomains: 'abcd', maxZoom: 19
+  }).addTo(leafletMap);
+}
+
+// ── TABS ─────────────────────────────────────────────────────────────────────
+function buildTabs() {
+  var bar = document.getElementById('tabBar');
+  bar.innerHTML = '';
+  Object.keys(MAPS).forEach(function(key) {
+    var m = MAPS[key];
+    var btn = document.createElement('button');
+    btn.className = 'tab-btn' + (key === currentMap ? ' active' : '');
+    btn.id = 'tab_' + key;
+    btn.textContent = m.title;
+    btn.onclick = function() { switchMap(key); };
+    bar.appendChild(btn);
+  });
+}
+
+function switchMap(key) {
+  currentMap = key;
+  currentFilter = 'all';
+  document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelector('.f-all').classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  var t = document.getElementById('tab_' + key);
+  if (t) t.classList.add('active');
+  loadMap(key);
+  closePopup();
+}
+
+// ── LOAD MAP DATA ─────────────────────────────────────────────────────────────
+function loadMap(key) {
+  var md = MAPS[key];
+  if (!md) return;
+
+  // Center map
+  leafletMap.setView(md.center, md.zoom);
+
+  // Clear old markers
+  markers.forEach(function(m) { leafletMap.removeLayer(m); });
+  markers = [];
+
+  var owned = hasAccess(key);
+  var sorted = md.places.slice().sort(function(a,b) { return (b.free?1:0)-(a.free?1:0); });
+
+  sorted.forEach(function(place) {
+    if (!place.free && !owned) return; // locked and not purchased — skip marker
+    var color = place.type === 'restaurant' ? '#e05a2b' : place.type === 'bar' ? '#6a3fd4' : '#1a8c5e';
+    var icon = L.divIcon({
+      className: '',
+      html: '<div style="width:10px;height:10px;border-radius:50%;background:' + color + ';border:2px solid rgba(255,255,255,0.7);box-shadow:0 1px 4px rgba(0,0,0,0.5);"></div>',
+      iconSize: [10, 10], iconAnchor: [5, 5]
+    });
+    var marker = L.marker([place.lat, place.lng], { icon: icon });
+    marker.on('click', function() { showPopup(place); });
+    marker.addTo(leafletMap);
+    markers.push(marker);
+  });
+
+  renderList(sorted, owned);
+  updateUnlockBanner(key, owned);
+}
+
+// ── SIDEBAR LIST ─────────────────────────────────────────────────────────────
+function renderList(sorted, owned) {
+  var list = document.getElementById('placesList');
+  list.innerHTML = '';
+  sorted.forEach(function(place) {
+    var visible = place.free || owned;
+    var show = currentFilter === 'all' || currentFilter === place.type;
+    if (!show) return;
+    var item = document.createElement('div');
+    item.className = 'place-item' + (!visible ? ' locked' : '');
+    item.innerHTML =
+      '<div class="place-dot ' + place.type + '"></div>' +
+      '<div><div class="place-name">' + place.name + '</div>' +
+      (!visible ? '<div class="place-lock">🔒 Purchase to unlock</div>' : '') +
+      '</div>';
+    if (visible) {
+      item.onclick = function() {
+        showPopup(place);
+        leafletMap.setView([place.lat, place.lng], 16);
+      };
+    }
+    list.appendChild(item);
+  });
+
+  // Show/hide sidebar unlock button
+  document.getElementById('sidebarUnlockBtn').style.display = owned ? 'none' : 'block';
+}
+
+function setFilter(type, btn) {
+  currentFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  var md = MAPS[currentMap];
+  var owned = hasAccess(currentMap);
+  var sorted = md.places.slice().sort(function(a,b) { return (b.free?1:0)-(a.free?1:0); });
+  renderList(sorted, owned);
+}
+
+// ── UNLOCK BANNER ─────────────────────────────────────────────────────────────
+function updateUnlockBanner(key, owned) {
+  var banner = document.getElementById('unlockBanner');
+  var md = MAPS[key];
+  if (owned) {
+    banner.style.display = 'none';
+  } else {
+    var freeCount = md.places.filter(function(p) { return p.free; }).length;
+    document.getElementById('unlockText').textContent = 'Showing ' + freeCount + ' free preview spots';
+    banner.style.display = 'flex';
+  }
+}
+
+// ── PLACE POPUP ───────────────────────────────────────────────────────────────
+function showPopup(place) {
+  document.getElementById('popupType').textContent = place.type.charAt(0).toUpperCase() + place.type.slice(1);
+  document.getElementById('popupName').textContent = place.name;
+  document.getElementById('popupDesc').textContent = place.desc || '';
+  document.getElementById('popupDirections').href =
+    'https://www.google.com/maps/dir/?api=1&destination=' + place.lat + ',' + place.lng;
+  document.getElementById('placePopup').classList.add('open');
+}
+
+function closePopup() {
+  document.getElementById('placePopup').classList.remove('open');
+}
+
+// ── LIVE LOCATION ─────────────────────────────────────────────────────────────
+function toggleLocation() {
+  if (watchId === null) {
+    startLocation();
+  } else {
+    stopLocation();
+  }
+}
+
+function startLocation() {
+  if (!navigator.geolocation) return;
+  var btn = document.getElementById('locateBtn');
+  btn.classList.add('active');
+  watchId = navigator.geolocation.watchPosition(function(pos) {
+    var lat = pos.coords.latitude, lng = pos.coords.longitude, acc = pos.coords.accuracy;
+    if (!liveMarker) {
+      liveMarker = L.marker([lat,lng], {
+        icon: L.divIcon({ className:'', html:'<div class="live-dot"></div>', iconSize:[16,16], iconAnchor:[8,8] })
+      }).addTo(leafletMap);
+    } else { liveMarker.setLatLng([lat,lng]); }
+    if (!accuracyCircle) {
+      accuracyCircle = L.circle([lat,lng], { radius:acc, color:'#b8975a', weight:1, fillColor:'#b8975a', fillOpacity:.12 }).addTo(leafletMap);
+    } else { accuracyCircle.setLatLng([lat,lng]); accuracyCircle.setRadius(acc); }
+    if (!hasZoomedToUser) { leafletMap.setView([lat,lng], 16); hasZoomedToUser = true; }
+  }, function() {
+    stopLocation();
+  }, { enableHighAccuracy:true, maximumAge:5000, timeout:15000 });
+}
+
+function stopLocation() {
+  if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+  document.getElementById('locateBtn').classList.remove('active');
+  if (liveMarker) { leafletMap.removeLayer(liveMarker); liveMarker = null; }
+  if (accuracyCircle) { leafletMap.removeLayer(accuracyCircle); accuracyCircle = null; }
+  hasZoomedToUser = false;
+}
+
+// ── SHOP ─────────────────────────────────────────────────────────────────────
+function openShop() { document.getElementById('shopScreen').classList.add('open'); renderShop(); }
+function closeShop() { document.getElementById('shopScreen').classList.remove('open'); }
+
+function renderShop() {
+  var grid = document.getElementById('shopGrid');
+  grid.innerHTML = '';
+  Object.keys(MAPS).forEach(function(key) {
+    var m = MAPS[key];
+    var owned = hasAccess(key);
+    var card = document.createElement('div');
+    card.className = 'map-card';
+    card.innerHTML =
+      '<div class="map-card-info">' +
+        '<div class="map-card-flag">' + (key === 'buenosaires' ? '🇦🇷 Argentina & 🇺🇾 Uruguay' : m.title.split(',')[1] ? m.title : '') + '</div>' +
+        '<div class="map-card-name">' + m.title + '</div>' +
+        '<div class="map-card-meta">' + m.total + ' curated places</div>' +
+      '</div>' +
+      '<div class="map-card-right">' +
+        '<div class="map-card-price">$2.99</div>' +
+        (owned
+          ? '<button class="buy-btn owned">✓ Owned</button>' +
+            '<div class="expires-note">Active</div>'
+          : '<button class="buy-btn" onclick="purchaseMap(\'' + key + '\')">Buy Map</button>') +
+      '</div>';
+    grid.appendChild(card);
+  });
+}
+
+function purchaseMap(mapKey) {
+  // Open Stripe in new tab — same as current website flow
+  window.open(MAPS[mapKey].stripeUrl, '_blank');
+  // After returning, user checks their purchases
+  // In a full implementation, Stripe webhook → Firebase → activePurchases updates automatically
+  // For now, show instructions
+  setTimeout(function() {
+    alert('Complete your purchase in the browser tab that opened. Once done, sign out and sign back in to unlock your map.');
+  }, 500);
+}
+
+// ── SIDEBAR TOGGLE (mobile) ───────────────────────────────────────────────────
+function toggleSidebar() {
+  var sb = document.getElementById('sidebar');
+  var btn = document.getElementById('sidebarToggle');
+  var legend = document.getElementById('mapLegend');
+  var floatUnlock = document.getElementById('unlockBanner');
+  sb.classList.toggle('open');
+  if (sb.classList.contains('open')) {
+    btn.style.left = '348px';
+    btn.textContent = '✕ Close';
+    if (legend) legend.style.display = 'none';
+    if (floatUnlock) floatUnlock.style.setProperty('display','none','important');
+  } else {
+    btn.style.left = '0';
+    btn.textContent = '☰ Places';
+    if (legend) legend.style.display = '';
+    if (floatUnlock) floatUnlock.style.removeProperty('display');
+  }
+}
+
+// ── SERVICE WORKER ────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').then(function() {
+    console.log('[App] Service worker registered');
+  }).catch(function(err) {
+    console.warn('[App] Service worker failed:', err);
+  });
+}
+
+// ── STRIPE SUCCESS HANDLER ────────────────────────────────────────────────────
+// When Stripe redirects back after payment, check URL for success signal
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var mapKey = params.get('map');
+  var success = params.get('purchase');
+  if (success === 'success' && mapKey && currentUser) {
+    recordPurchase(currentUser.uid, mapKey).then(function() {
+      activePurchases.push(mapKey);
+      loadMap(currentMap);
+      renderShop();
+      alert('Your ' + (MAPS[mapKey] ? MAPS[mapKey].title : mapKey) + ' map is now unlocked!');
+    });
+    // Clean URL
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+})();
+</script>
+
+</body>
+</html>
