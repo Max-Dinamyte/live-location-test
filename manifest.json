@@ -1,0 +1,28 @@
+{
+  "name": "Max Dinamyte Travel Maps",
+  "short_name": "Max Dinamyte",
+  "description": "Hand-curated travel maps for cities worth exploring.",
+  "start_url": "/mapapp.html",
+  "display": "standalone",
+  "background_color": "#0e0d0b",
+  "theme_color": "#0e0d0b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["travel", "navigation", "lifestyle"],
+  "lang": "en-US",
+  "scope": "/",
+  "prefer_related_applications": false
+}
